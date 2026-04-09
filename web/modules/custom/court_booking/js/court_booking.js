@@ -915,6 +915,7 @@
               calendars = null;
               bufferSlotCandidates = null;
             }
+            refreshPitchSection();
             // eslint-disable-next-line no-console
             console.error(e);
           }
@@ -923,6 +924,7 @@
         function renderTimesForDay() {
           elTimes.innerHTML = '';
           if (!selectedYmd) {
+            refreshPitchSection();
             return;
           }
           const tz = siteTimeZoneId;
@@ -935,6 +937,7 @@
               p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('No time slots for this day.');
               elTimes.appendChild(p);
+              refreshPitchSection();
               return;
             }
             if (sameDayClosed) {
@@ -942,6 +945,7 @@
               p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
               elTimes.appendChild(p);
+              refreshPitchSection();
               return;
             }
             let slots = bufferSlotCandidates
@@ -964,6 +968,7 @@
                 'No open times match your opening time, buffer spacing on the lesson grid, or booking window. Try another date or adjust booking hours.',
               );
               elTimes.appendChild(p);
+              refreshPitchSection();
               return;
             }
             slots.forEach((slot) => {
@@ -990,7 +995,7 @@
               btn.addEventListener('click', () => {
                 selectedStartIso = slot.start;
                 applyTimeSlotHighlights();
-                renderCourts(slot.start);
+                refreshPitchSection();
               });
 
               elTimes.appendChild(btn);
@@ -998,10 +1003,12 @@
             if (selectedStartIso) {
               applyTimeSlotHighlights();
             }
+            refreshPitchSection();
             return;
           }
 
           if (!calendars) {
+            refreshPitchSection();
             return;
           }
           const byStart = new Map();
@@ -1095,6 +1102,7 @@
             p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('No time slots for this day.');
             elTimes.appendChild(p);
+            refreshPitchSection();
             return;
           }
 
@@ -1103,6 +1111,7 @@
             p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
             elTimes.appendChild(p);
+            refreshPitchSection();
             return;
           }
 
@@ -1117,6 +1126,7 @@
               p.textContent = Drupal.t('No slots for this duration within your booking hours.');
             }
             elTimes.appendChild(p);
+            refreshPitchSection();
             return;
           }
 
@@ -1151,13 +1161,104 @@
             btn.addEventListener('click', () => {
               selectedStartIso = startIso;
               applyTimeSlotHighlights();
-              renderCourts(startIso);
+              refreshPitchSection();
             });
 
             elTimes.appendChild(btn);
           });
           if (selectedStartIso) {
             applyTimeSlotHighlights();
+          }
+          refreshPitchSection();
+        }
+
+        /**
+         * All pitches for the current sport when no time slot is chosen (or after duration/date change).
+         * Resource closures still hide pitches on the selected bookable date.
+         */
+        function renderCourtsOverview() {
+          elCourts.innerHTML = '';
+          const sport = currentSport();
+          if (!sport || !Array.isArray(sport.variations) || !sport.variations.length) {
+            return;
+          }
+          let list = sport.variations.slice();
+          if (selectedYmd && bookableYmd.has(selectedYmd)) {
+            list = list.filter((v) => !isVariationClosedOnYmd(v.id, selectedYmd));
+          }
+          if (!list.length) {
+            const p = document.createElement('p');
+            p.className = 'text-sm text-slate-500';
+            p.textContent = Drupal.t('No pitches to show for this sport on the selected date.');
+            elCourts.appendChild(p);
+            return;
+          }
+          list.forEach((v) => {
+            const card = document.createElement('div');
+            card.setAttribute('role', 'listitem');
+            const highlight = s.initialVariationId && String(s.initialVariationId) === String(v.id);
+            card.className = [
+              'flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm',
+              highlight ? 'border-[#02216E] ring-2 ring-[#02216E] ring-offset-2' : 'border-slate-200',
+            ].join(' ');
+
+            const media = document.createElement('div');
+            media.className = 'aspect-[4/3] w-full bg-slate-100 bg-cover bg-center';
+            if (v.image) {
+              media.style.backgroundImage = `url('${String(v.image).replace(/'/g, '%27')}')`;
+            }
+
+            const body = document.createElement('div');
+            body.className = 'flex flex-1 flex-col gap-2 p-4';
+
+            const h = document.createElement('h3');
+            h.className = 'font-display text-lg font-semibold text-slate-900';
+            h.textContent = v.title;
+
+            const price = document.createElement('p');
+            price.className = 'text-sm font-semibold text-orange-600';
+            price.textContent = formatPriceForDuration(v, durationHours);
+
+            const buffer = document.createElement('p');
+            buffer.className = 'text-xs text-slate-500';
+            buffer.textContent = formatOptionalBufferCaption(bufferMinutes);
+
+            if (v.detailUrl) {
+              const detail = document.createElement('a');
+              detail.href = String(v.detailUrl);
+              detail.className =
+                'text-sm font-semibold text-[#02216E] underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
+              detail.textContent = Drupal.t('View details');
+              body.appendChild(detail);
+            }
+
+            const bookBtn = document.createElement('button');
+            bookBtn.type = 'button';
+            bookBtn.disabled = true;
+            bookBtn.className =
+              'cb-book mt-2 inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400';
+            bookBtn.textContent = Drupal.t('Book');
+
+            body.appendChild(h);
+            body.appendChild(price);
+            if (buffer.textContent) {
+              body.appendChild(buffer);
+            }
+            body.appendChild(bookBtn);
+            card.appendChild(media);
+            card.appendChild(body);
+            elCourts.appendChild(card);
+          });
+        }
+
+        function refreshPitchSection() {
+          if (!elCourts) {
+            return;
+          }
+          if (selectedStartIso && selectedYmd) {
+            renderCourts(selectedStartIso);
+          } else {
+            renderCourtsOverview();
           }
         }
 
