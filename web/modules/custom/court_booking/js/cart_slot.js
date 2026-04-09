@@ -457,8 +457,8 @@
             btn.className = disabled
               ? 'min-w-[4.5rem] shrink-0 cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-3 py-3 text-center text-slate-400 shadow-sm'
               : on
-              ? 'min-w-[4.5rem] shrink-0 rounded-xl border-2 border-[#02216E] bg-[#02216E] px-3 py-3 text-center text-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]'
-              : 'min-w-[4.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-800 shadow-sm hover:border-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
+                ? 'min-w-[4.5rem] shrink-0 rounded-xl border-2 border-[#02216E] bg-[#02216E] px-3 py-3 text-center text-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]'
+                : 'min-w-[4.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-800 shadow-sm hover:border-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
             btn.innerHTML = `<span class="block text-xs font-medium uppercase ${on ? 'text-white' : 'text-slate-500'}">${Drupal.checkPlain(
               day.weekday || '',
             )}</span><span class="mt-1 block font-display text-lg font-semibold">${Drupal.checkPlain(String(day.dayNum || ''))}</span>`;
@@ -652,21 +652,36 @@
               const btn = document.createElement('button');
               btn.type = 'button';
               btn.dataset.startIso = slot.start;
+
+              const startM = minutesSinceMidnightInZone(slot.start, tz);
+              const isPast = isToday && nowMins >= 0 && startM <= nowMins;
+
               setTimeSlotPillContent(btn, slot.start, slot.end, tz);
+
               const on = ctx.selectedStartIso === slot.start;
-              btn.className = timeSlotPillClasses(on, false);
+
+              btn.className = timeSlotPillClasses(on, isPast);
+
+              if (isPast) {
+                btn.disabled = true;
+                btn.setAttribute('aria-disabled', 'true');
+                elTimes.appendChild(btn);
+                return;
+              }
+
               btn.addEventListener('click', () => {
                 ctx.selectedStartIso = slot.start;
                 ctx.selectedBlock = { start: slot.start, end: slot.end };
+
                 elTimes.querySelectorAll('button').forEach((b) => {
-                  if (b.disabled) {
-                    return;
-                  }
+                  if (b.disabled) return;
                   const isOn = b.dataset.startIso === ctx.selectedStartIso;
                   b.className = timeSlotPillClasses(isOn, false);
                 });
+
                 updateSaveState();
               });
+
               elTimes.appendChild(btn);
             });
             return;
@@ -771,38 +786,50 @@
             const row = byStart.get(startIso) || [];
             const hasSelectable = row.some(({ entry }) => isEntrySelectable(entry));
             const rentalEnd = playBufferEndIso(startIso, ctx.durationHours, bufferMinutes);
+
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.dataset.startIso = startIso;
+
+            const startM = minutesSinceMidnightInZone(startIso, tz);
+            const isPast = isToday && nowMins >= 0 && startM <= nowMins;
+
             setTimeSlotPillContent(btn, startIso, rentalEnd || '', tz);
-            if (!hasSelectable) {
+
+            if (!hasSelectable || isPast) {
               btn.disabled = true;
               btn.className = timeSlotPillClasses(false, true);
+              btn.setAttribute('aria-disabled', 'true');
               elTimes.appendChild(btn);
               return;
             }
+
             const on = ctx.selectedStartIso === startIso;
             btn.className = timeSlotPillClasses(on, false);
+
             btn.addEventListener('click', () => {
               ctx.selectedStartIso = startIso;
+
               const slotN = slotCountForVariation(v, slotMinutesDefault, ctx.durationHours);
               const requiredN =
                 bufferMinutes > 0
                   ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.durationHours, bufferMinutes)
                   : slotN;
+
               const gridOk = requiredN && consecutiveBlock(cal, startIso, requiredN);
               const rentEnd = playBufferEndIso(startIso, ctx.durationHours, bufferMinutes);
-              ctx.selectedBlock =
-                gridOk && rentEnd ? { start: startIso, end: rentEnd } : null;
+
+              ctx.selectedBlock = gridOk && rentEnd ? { start: startIso, end: rentEnd } : null;
+
               elTimes.querySelectorAll('button').forEach((b) => {
-                if (b.disabled) {
-                  return;
-                }
+                if (b.disabled) return;
                 const isOn = b.dataset.startIso === ctx.selectedStartIso;
                 b.className = timeSlotPillClasses(isOn, false);
               });
+
               updateSaveState();
             });
+
             elTimes.appendChild(btn);
           });
         }

@@ -648,7 +648,7 @@
           elDates.innerHTML = '';
           if (!dates.length) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('No bookable dates in the current range.');
             elDates.appendChild(p);
             return;
@@ -659,7 +659,7 @@
           const slice = daysInVisibleMonth();
           if (!slice.length) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('No dates in this month. Use the arrows or calendar.');
             elDates.appendChild(p);
             return;
@@ -674,9 +674,9 @@
             btn.className = disabled
               ? 'min-w-[4.5rem] shrink-0 cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-3 py-3 text-center text-slate-400 shadow-sm'
               : on
-              ? 'min-w-[4.5rem] shrink-0 rounded-xl border-2 border-[#02216E] bg-[#02216E] px-3 py-3 text-center text-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]'
-              : 'min-w-[4.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-800 shadow-sm hover:border-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
-            btn.innerHTML = `<span class="block text-xs font-medium uppercase ${on ? 'text-white' : 'text-[#02216E]'}">${escapeHtml(
+                ? 'min-w-[4.5rem] shrink-0 rounded-xl border-2 border-[#02216E] bg-[#02216E] px-3 py-3 text-center text-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]'
+                : 'min-w-[4.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-800 shadow-sm hover:border-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
+            btn.innerHTML = `<span class="block text-xs font-medium uppercase ${on ? 'text-white' : 'text-slate-500'}">${escapeHtml(
               day.weekday || '',
             )}</span><span class="mt-1 block font-display text-lg font-semibold">${escapeHtml(
               String(day.dayNum || ''),
@@ -932,14 +932,14 @@
             const isToday = selectedYmd === todayYmd(tz);
             if (!bufferSlotCandidates.length) {
               const p = document.createElement('p');
-              p.className = 'text-sm text-[#02216E]';
+              p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('No time slots for this day.');
               elTimes.appendChild(p);
               return;
             }
             if (sameDayClosed) {
               const p = document.createElement('p');
-              p.className = 'text-sm text-[#02216E]';
+              p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
               elTimes.appendChild(p);
               return;
@@ -959,7 +959,7 @@
             });
             if (!slots.length) {
               const p = document.createElement('p');
-              p.className = 'text-sm text-[#02216E]';
+              p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t(
                 'No open times match your opening time, buffer spacing on the lesson grid, or booking window. Try another date or adjust booking hours.',
               );
@@ -971,14 +971,28 @@
               btn.type = 'button';
               btn.setAttribute('role', 'listitem');
               btn.setAttribute('aria-pressed', 'false');
+
+              const startM = minutesSinceMidnightInZone(slot.start, tz);
+              const isPast = isToday && nowMins >= 0 && startM <= nowMins;
+
               setTimeSlotPillContent(btn, slot.start, slot.end, tz);
+
               btn.dataset.startIso = slot.start;
-              btn.className = timeSlotPillClasses(false, false);
+              btn.className = timeSlotPillClasses(false, isPast);
+
+              if (isPast) {
+                btn.disabled = true;
+                btn.setAttribute('aria-disabled', 'true');
+                elTimes.appendChild(btn);
+                return;
+              }
+
               btn.addEventListener('click', () => {
                 selectedStartIso = slot.start;
                 applyTimeSlotHighlights();
                 renderCourts(slot.start);
               });
+
               elTimes.appendChild(btn);
             });
             if (selectedStartIso) {
@@ -1078,7 +1092,7 @@
 
           if (!times.length) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('No time slots for this day.');
             elTimes.appendChild(p);
             return;
@@ -1086,7 +1100,7 @@
 
           if (sameDayClosed) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
             elTimes.appendChild(p);
             return;
@@ -1094,7 +1108,7 @@
 
           if (!timesInWindow.length) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             if (bufferMinutes > 0 && sport) {
               p.textContent = Drupal.t(
                 'No open times match your opening time, buffer spacing on the lesson grid, or booking window. Try another date or adjust booking hours.',
@@ -1110,26 +1124,36 @@
             const row = byStart.get(startIso) || [];
             const hasSelectable = row.some(({ entry }) => isEntrySelectable(entry));
             const rentalEnd = playBufferEndIso(startIso, durationHours, bufferMinutes);
+
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.setAttribute('role', 'listitem');
             btn.setAttribute('aria-pressed', 'false');
+
+            const startM = minutesSinceMidnightInZone(startIso, tz);
+            const isPast = isToday && nowMins >= 0 && startM <= nowMins;
+
             setTimeSlotPillContent(btn, startIso, rentalEnd || '', tz);
+
             btn.dataset.startIso = startIso;
-            if (!hasSelectable) {
+
+            if (!hasSelectable || isPast) {
               btn.disabled = true;
               btn.className = timeSlotPillClasses(false, true);
               btn.setAttribute('aria-disabled', 'true');
-              btn.title = Drupal.t('Fully booked or not available.');
+              btn.title = Drupal.t('Fully booked or past time.');
               elTimes.appendChild(btn);
               return;
             }
+
             btn.className = timeSlotPillClasses(false, false);
+
             btn.addEventListener('click', () => {
               selectedStartIso = startIso;
               applyTimeSlotHighlights();
               renderCourts(startIso);
             });
+
             elTimes.appendChild(btn);
           });
           if (selectedStartIso) {
@@ -1150,7 +1174,7 @@
             const slot = bufferSlotCandidates.find((c) => c.start === startIso);
             if (!slot || !Array.isArray(slot.variationIds) || !slot.variationIds.length) {
               const p = document.createElement('p');
-              p.className = 'text-sm text-[#02216E]';
+              p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('No courts available for this time and date (temporary closure or no availability).');
               elCourts.appendChild(p);
               return;
@@ -1165,7 +1189,7 @@
             });
             if (!blocks.length) {
               const p = document.createElement('p');
-              p.className = 'text-sm text-[#02216E]';
+              p.className = 'text-sm text-slate-500';
               p.textContent = Drupal.t('No courts available for this time and date (temporary closure or no availability).');
               elCourts.appendChild(p);
               return;
@@ -1240,7 +1264,7 @@
               price.textContent = formatPriceForDuration(v, durationHours);
 
               const buffer = document.createElement('p');
-              buffer.className = 'text-xs text-[#02216E]';
+              buffer.className = 'text-xs text-slate-500';
               buffer.textContent = formatOptionalBufferCaption(bufferMinutes);
 
               const bookBtn = document.createElement('button');
@@ -1317,7 +1341,7 @@
 
           if (!blocks.length) {
             const p = document.createElement('p');
-            p.className = 'text-sm text-[#02216E]';
+            p.className = 'text-sm text-slate-500';
             p.textContent = Drupal.t('No courts available for this time and date (temporary closure or no availability).');
             elCourts.appendChild(p);
             return;
@@ -1393,7 +1417,7 @@
             price.textContent = formatPriceForDuration(v, durationHours);
 
             const buffer = document.createElement('p');
-            buffer.className = 'text-xs text-[#02216E]';
+            buffer.className = 'text-xs text-slate-500';
             buffer.textContent = formatOptionalBufferCaption(bufferMinutes);
 
             const bookBtn = document.createElement('button');
