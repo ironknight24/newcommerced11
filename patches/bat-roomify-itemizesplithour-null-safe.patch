@@ -1,0 +1,15 @@
+diff --git a/modules/bat_roomify/src/Store/Store.php b/modules/bat_roomify/src/Store/Store.php
+--- a/modules/bat_roomify/src/Store/Store.php
++++ b/modules/bat_roomify/src/Store/Store.php
+@@ -82,7 +82,10 @@
+       $existing_value = $existing_events[$unit_id][EVENT::BAT_HOUR][$year][$month][$day][$hour];
+     }
+     else {
+-      $existing_value = $existing_events[$unit_id][EVENT::BAT_DAY][$year][$month][$day];
++      $existing_value = 0;
++      if (isset($existing_events[$unit_id][EVENT::BAT_DAY][$year][$month][$day])) {
++        $existing_value = $existing_events[$unit_id][EVENT::BAT_DAY][$year][$month][$day];
++      }
+     }
+     if ($value === -1 && $existing_value > 0) {
+       $itemized_hour = &$itemized[Event::BAT_MINUTE][$year][$month][$day][$hour];

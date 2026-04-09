@@ -1,0 +1,59 @@
+court_booking.booking_page:
+  path: '/book/amenities'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\BookingPageController::content'
+    _title: 'Amenities'
+  requirements:
+    _permission: 'access court booking page'
+
+court_booking.court_detail:
+  path: '/book/court/{commerce_product_variation}'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\CourtDetailController::content'
+    _title_callback: '\Drupal\court_booking\Controller\CourtDetailController::title'
+  requirements:
+    _custom_access: '\Drupal\court_booking\Controller\CourtDetailController::access'
+  options:
+    parameters:
+      commerce_product_variation:
+        type: entity:commerce_product_variation
+
+court_booking.slot_candidates:
+  path: '/court-booking/slot-candidates'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\SlotCandidatesController::candidates'
+  methods: [POST]
+  requirements:
+    _custom_access: '\Drupal\court_booking\Access\SlotCandidatesAccess::access'
+    _csrf_request_header_token: 'TRUE'
+
+court_booking.add:
+  path: '/court-booking/add'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\BookingAddController::add'
+  methods: [POST]
+  requirements:
+    _permission: 'use court booking add'
+    _csrf_request_header_token: 'TRUE'
+
+court_booking.cart_update_slot:
+  path: '/court-booking/cart/slot/{commerce_order_item}'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\CartSlotUpdateController::updateSlot'
+  methods: [POST]
+  requirements:
+    _permission: 'use court booking add'
+    _csrf_request_header_token: 'TRUE'
+    _court_booking_cart_slot_order_item: 'TRUE'
+  options:
+    parameters:
+      commerce_order_item:
+        type: entity:commerce_order_item
+
+court_booking.settings:
+  path: '/admin/commerce/config/court-booking'
+  defaults:
+    _form: '\Drupal\court_booking\Form\SettingsForm'
+    _title: 'Court booking'
+  requirements:
+    _permission: 'administer court booking'

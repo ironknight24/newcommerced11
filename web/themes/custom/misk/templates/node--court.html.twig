@@ -1,0 +1,107 @@
+{#
+/**
+ * @file
+ * Court content type: booking detail layout; hero slot from cart (court_booking module).
+ */
+#}
+<article{{ attributes.addClass('court-node', 'font-sans', 'text-slate-900') }}>
+  <header class="court-node__hero relative min-h-[280px] w-full overflow-hidden bg-slate-900 md:min-h-[360px]">
+    {% if court_booking_hero_background_type == 'video' and court_booking_hero_video_url %}
+      <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+        <source src="{{ court_booking_hero_video_url|e('html_attr') }}" type="video/mp4">
+      </video>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30" aria-hidden="true"></div>
+    {% elseif court_booking_hero_image_url %}
+      <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ court_booking_hero_image_url|e('html_attr') }}');"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30" aria-hidden="true"></div>
+    {% else %}
+      <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950" aria-hidden="true"></div>
+    {% endif %}
+
+    <div class="relative z-10 flex min-h-[280px] flex-col px-4 pb-10 pt-6 md:min-h-[360px] md:px-8">
+      <a href="{{ court_booking_booking_back_url }}" class="mb-8 inline-flex w-fit items-center gap-2 text-sm font-medium text-white/90 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
+        <span aria-hidden="true">←</span>
+        {{ 'Go back'|t }}
+      </a>
+      <div class="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center text-center text-white">
+        {% if court_booking_hero_slot %}
+          <p class="font-display text-2xl font-bold leading-tight tracking-tight md:text-4xl">{{ court_booking_hero_slot }}</p>
+        {% else %}
+          <p class="max-w-md text-base text-white/85 md:text-lg">{{ court_booking_hero_hint }}</p>
+        {% endif %}
+        {% if node.field_court_location is defined and not node.field_court_location.isEmpty %}
+          <p class="mt-4 flex items-center justify-center gap-2 text-sm text-white/90 md:text-base">
+            <span class="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-white/80" aria-hidden="true"></span>
+            <span>{{ node.field_court_location.value }}</span>
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <div class="mx-auto max-w-6xl px-4 py-10 md:px-8">
+    <div class="mb-8 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+      {{ title_prefix }}
+      <h1{{ title_attributes.addClass('font-display text-2xl font-bold uppercase tracking-wide text-[#02216E] md:text-3xl') }}>{{ label }}</h1>
+      {{ title_suffix }}
+      {% if court_booking_price_formatted %}
+        <p class="text-lg font-semibold text-orange-600 md:pt-1 md:text-xl">{{ court_booking_price_formatted }} <span class="whitespace-nowrap font-normal text-slate-600">{{ '/ Hour'|t }}</span></p>
+      {% endif %}
+    </div>
+
+    <div class="grid gap-10 lg:grid-cols-2 lg:gap-12">
+      <div class="space-y-8">
+        <section aria-labelledby="court-about-heading">
+          <h2 id="court-about-heading" class="mb-3 text-xs font-bold uppercase tracking-wider text-[#02216E]">{{ 'About'|t }}</h2>
+          <div class="prose prose-slate max-w-none text-slate-700">
+            {{ content.field_court_description }}
+          </div>
+        </section>
+
+        <section aria-labelledby="court-bring-heading">
+          <h2 id="court-bring-heading" class="mb-4 text-xs font-bold uppercase tracking-wider text-[#02216E]">{{ 'What to bring'|t }}</h2>
+          <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <li class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-700">
+              <span class="mb-2 block text-2xl" aria-hidden="true">⚽</span>{{ 'Football'|t }}
+            </li>
+            <li class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-700">
+              <span class="mb-2 block text-2xl" aria-hidden="true">👟</span>{{ 'Sports shoes'|t }}
+            </li>
+            <li class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-700">
+              <span class="mb-2 block text-2xl" aria-hidden="true">💧</span>{{ 'Water bottle'|t }}
+            </li>
+            <li class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-700">
+              <span class="mb-2 block text-2xl" aria-hidden="true">👕</span>{{ 'Sportswear'|t }}
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="space-y-8">
+        <section aria-labelledby="court-details-heading">
+          <h2 id="court-details-heading" class="mb-4 text-xs font-bold uppercase tracking-wider text-[#02216E]">{{ 'Details'|t }}</h2>
+          <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% if node.field_court_capacity is defined and not node.field_court_capacity.isEmpty %}
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <dt class="text-xs font-semibold uppercase text-slate-500">{{ 'Capacity'|t }}</dt>
+                <dd class="mt-1 text-slate-900">{{ node.field_court_capacity.value }} {{ 'players'|t }}</dd>
+              </div>
+            {% endif %}
+            {% if node.field_court_location is defined and not node.field_court_location.isEmpty %}
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <dt class="text-xs font-semibold uppercase text-slate-500">{{ 'Location'|t }}</dt>
+                <dd class="mt-1 text-slate-900">{{ node.field_court_location.value }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+        </section>
+
+        <a href="{{ court_booking_cart_url }}" class="block w-full rounded-xl bg-[#02216E] py-4 text-center text-base font-semibold text-white hover:bg-[#011550] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]">
+          {{ 'Proceed to cart'|t }}
+        </a>
+      </div>
+    </div>
+
+    {#{{ content|without('field_court_description') }}#}
+  </div>
+</article>

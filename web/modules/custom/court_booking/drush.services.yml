@@ -1,0 +1,6 @@
+services:
+  court_booking.commands:
+    class: Drupal\court_booking\Drush\CourtBookingCommands
+    arguments: []
+    tags:
+      - { name: drush.command }

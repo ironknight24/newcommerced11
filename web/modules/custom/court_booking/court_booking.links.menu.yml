@@ -1,0 +1,6 @@
+court_booking.settings:
+  title: 'Court booking'
+  description: 'Map sports to product variations for the booking page.'
+  parent: commerce.configuration
+  route_name: court_booking.settings
+  weight: 35

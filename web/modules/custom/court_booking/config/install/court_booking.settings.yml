@@ -1,0 +1,14 @@
+sport_vocabulary: court_type
+sport_mappings: []
+days_ahead: 60
+excluded_weekdays:
+  - 0
+order_type_id: default
+# Daily window in site timezone (24h HH:MM). Narrows displayed/accepted slots.
+booking_day_start: '06:00'
+booking_day_end: '23:00'
+max_booking_hours: 4
+buffer_minutes: 0
+same_day_cutoff_hm: ''
+blackout_dates: []
+resource_closures: []

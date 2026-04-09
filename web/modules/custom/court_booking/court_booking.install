@@ -1,0 +1,203 @@
+<?php
+
+/**
+ * @file
+ * Install hooks for Court Booking.
+ */
+
+use Drupal\user\RoleInterface;
+
+/**
+ * Implements hook_install().
+ */
+function court_booking_install(): void {
+  _court_booking_grant_default_booking_permissions();
+}
+
+/**
+ * Grant booking permissions to anonymous and authenticated roles.
+ */
+function _court_booking_grant_default_booking_permissions(): void {
+  $perms = [
+    'access court booking page',
+    'use court booking add',
+  ];
+  user_role_grant_permissions(RoleInterface::ANONYMOUS_ID, $perms);
+  user_role_grant_permissions(RoleInterface::AUTHENTICATED_ID, $perms);
+}
+
+/**
+ * Grant public booking permissions (fixes 403 for /book/amenities for guests).
+ */
+function court_booking_update_9001(): void {
+  _court_booking_grant_default_booking_permissions();
+}
+
+/**
+ * Add default daily booking window (site timezone).
+ */
+function court_booking_update_9002(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('booking_day_start') === NULL) {
+    $config->set('booking_day_start', '06:00');
+  }
+  if ($config->get('booking_day_end') === NULL) {
+    $config->set('booking_day_end', '23:00');
+  }
+  $config->save();
+}
+
+/**
+ * Ensure each sport mapping row has product_id (0 = legacy variation-only rows).
+ */
+function court_booking_update_9003(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  $mappings = $config->get('sport_mappings') ?: [];
+  $changed = FALSE;
+  foreach ($mappings as $i => $row) {
+    if (!array_key_exists('product_id', $row)) {
+      $mappings[$i]['product_id'] = 0;
+      $changed = TRUE;
+    }
+  }
+  if ($changed) {
+    $config->set('sport_mappings', $mappings)->save();
+  }
+}
+
+/**
+ * Repair BAT units in commerce_bat_variation_unit missing unit_type_id (breaks booking).
+ */
+function court_booking_update_9004(): void {
+  $config = \Drupal::config('commerce_bat.settings');
+  $lesson_bundle = $config->get('lesson_unit_bundle') ?: 'lesson_unit';
+  $lesson_ut = $config->get('lesson_unit_type') ?: 'default';
+  $em = \Drupal::entityTypeManager();
+  if (!$lesson_ut || !$em->getStorage('bat_unit_type')->load($lesson_ut)) {
+    \Drupal::logger('court_booking')->warning('court_booking_update_9004: BAT unit type @id not found; skipped.', ['@id' => $lesson_ut ?: '(empty)']);
+    return;
+  }
+  $db = \Drupal::database();
+  if (!$db->schema()->tableExists('commerce_bat_variation_unit')) {
+    return;
+  }
+  $unit_ids = $db->select('commerce_bat_variation_unit', 'm')
+    ->fields('m', ['unit_id'])
+    ->execute()
+    ->fetchCol();
+  $storage = $em->getStorage('bat_unit');
+  foreach (array_unique($unit_ids) as $unit_id) {
+    $unit = $storage->load($unit_id);
+    if (!$unit || $unit->bundle() !== $lesson_bundle) {
+      continue;
+    }
+    if ($unit->get('unit_type_id')->isEmpty() || !$unit->getUnitType()) {
+      $unit->setUnitTypeId($lesson_ut);
+      $unit->save();
+    }
+  }
+}
+
+/**
+ * Fix Commerce BAT unit type IDs: config shipped "default" but bat_unit_type uses numeric ids.
+ */
+function court_booking_update_9005(): void {
+  $cb = \Drupal::configFactory()->getEditable('commerce_bat.settings');
+  $storage = \Drupal::entityTypeManager()->getStorage('bat_unit_type');
+  $all = $storage->loadMultiple();
+  if (!$all) {
+    \Drupal::logger('court_booking')->warning('court_booking_update_9005: No bat_unit_type entities; set Commerce BAT unit types manually.');
+    return;
+  }
+  usort($all, static function ($a, $b) {
+    return ((int) $a->id()) <=> ((int) $b->id());
+  });
+  $chosen = reset($all);
+  if (count($all) > 1) {
+    foreach ($all as $ut) {
+      if ($ut->bundle() !== 'apt') {
+        $chosen = $ut;
+        break;
+      }
+    }
+  }
+  $first_id = (string) $chosen->id();
+
+  foreach (['lesson_unit_type', 'rental_unit_type'] as $key) {
+    $current = (string) ($cb->get($key) ?: '');
+    if ($current !== '' && $storage->load($current)) {
+      continue;
+    }
+    $cb->set($key, $first_id);
+    \Drupal::logger('court_booking')->notice('court_booking_update_9005: Set commerce_bat.settings @key from @old to @new (first existing bat_unit_type).', [
+      '@key' => $key,
+      '@old' => $current !== '' ? $current : '(empty)',
+      '@new' => $first_id,
+    ]);
+  }
+  $cb->save();
+}
+
+/**
+ * Use per-variation lesson capacity (avoids shared "Lesson pool: default" units for courts).
+ */
+function court_booking_update_9006(): void {
+  $storage = \Drupal::entityTypeManager()->getStorage('commerce_bat_capacity_preset');
+  $preset = $storage->load('default_lesson_capacity');
+  if (!$preset || $preset->getCapacityMode() !== 'shared') {
+    return;
+  }
+  $preset->set('capacity_mode', 'separate');
+  $preset->save();
+  \Drupal::logger('court_booking')->notice('court_booking_update_9006: Set default_lesson_capacity to separate (per-variation BAT units).');
+}
+
+/**
+ * Add max booking duration (hours) for multi-hour amenities bookings.
+ */
+function court_booking_update_9007(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('max_booking_hours') === NULL) {
+    $config->set('max_booking_hours', 4)->save();
+  }
+}
+
+/**
+ * Add default buffer time between bookings (minutes).
+ */
+function court_booking_update_9008(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('buffer_minutes') === NULL) {
+    $config->set('buffer_minutes', 0)->save();
+  }
+}
+
+/**
+ * Add optional same-day booking cutoff (HH:MM).
+ */
+function court_booking_update_9009(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('same_day_cutoff_hm') === NULL) {
+    $config->set('same_day_cutoff_hm', '')->save();
+  }
+}
+
+/**
+ * Add blackout date list for future booking blocks.
+ */
+function court_booking_update_9010(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('blackout_dates') === NULL) {
+    $config->set('blackout_dates', [])->save();
+  }
+}
+
+/**
+ * Add temporary per-resource closure ranges.
+ */
+function court_booking_update_9011(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('resource_closures') === NULL) {
+    $config->set('resource_closures', [])->save();
+  }
+}

@@ -1,0 +1,17 @@
+booking:
+  version: VERSION
+  js:
+    js/court_booking.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+cart_slot:
+  version: VERSION
+  js:
+    js/cart_slot.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once

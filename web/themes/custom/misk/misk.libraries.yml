@@ -1,0 +1,6 @@
+global:
+  css:
+    theme:
+      # Bypass CSS aggregation so Tailwind rebuilds apply immediately (aggregates
+      # can stay stale until css-js cache clear).
+      dist/misk.css: { minified: true, preprocess: false }

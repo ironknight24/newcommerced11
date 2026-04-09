@@ -1,0 +1,16 @@
+name: Court Booking
+type: module
+description: 'Dedicated court booking page (Twig + vanilla JS) using Commerce BAT availability JSON and server-side add-to-cart validation.'
+package: Custom
+core_version_requirement: ^10 || ^11
+dependencies:
+  - drupal:node
+  - drupal:media
+  - drupal:datetime
+  - drupal:commerce
+  - drupal:commerce_price
+  - drupal:commerce_cart
+  - drupal:commerce_product
+  - drupal:commerce_bat
+  - bat:bat_unit
+  - drupal:taxonomy

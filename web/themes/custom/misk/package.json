@@ -1,0 +1,11 @@
+{
+  "name": "misk-theme",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i ./src/input.css -o ./dist/misk.css --minify",
+    "watch": "tailwindcss -i ./src/input.css -o ./dist/misk.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

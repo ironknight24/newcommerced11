@@ -1,0 +1,68 @@
+{#
+/**
+ * Cart line card — structure only; visuals in misk input.css.
+ */
+#}
+<article class="cb-cart-card">
+  <div class="cb-cart-card__inner">
+    <div class="cb-cart-card__primary">
+      {% for field in fields %}
+        {% if field.class == 'purchased-entity' %}
+          {{ field.separator }}
+          {% if field.wrapper_element %}
+            <{{ field.wrapper_element }}{{ field.wrapper_attributes }}>
+          {% endif %}
+          {% if field.element_type %}
+            <{{ field.element_type }}{{ field.element_attributes }}>{{ field.content }}</{{ field.element_type }}>
+          {% else %}
+            {{ field.content }}
+          {% endif %}
+          {% if field.wrapper_element %}
+            </{{ field.wrapper_element }}>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+
+      <div class="cb-cart-card__slot-area">
+        {% for field in fields %}
+          {% if field.class == 'field-cbat-rental-date' %}
+            {{ field.separator }}
+            {% if field.wrapper_element %}
+              <{{ field.wrapper_element }}{{ field.wrapper_attributes }}>
+            {% endif %}
+            {% if field.element_type %}
+              <{{ field.element_type }}{{ field.element_attributes }}>{{ field.content }}</{{ field.element_type }}>
+            {% else %}
+              {{ field.content }}
+            {% endif %}
+            {% if field.wrapper_element %}
+              </{{ field.wrapper_element }}>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="cb-cart-card__meta">
+      {% for field in fields %}
+        {% if field.class in ['unit-price__number', 'edit-quantity', 'remove-button', 'total-price__number'] %}
+          {{ field.separator }}
+          {% if field.wrapper_element %}
+            <{{ field.wrapper_element }}{{ field.wrapper_attributes.addClass('cb-cart-card__meta-field') }}>
+          {% endif %}
+          {% if field.label %}
+            <span class="cb-cart-card__meta-label">{{ field.label }}{{ field.label_suffix }}</span>
+          {% endif %}
+          {% if field.element_type %}
+            <{{ field.element_type }}{{ field.element_attributes.addClass('cb-cart-card__meta-value') }}>{{ field.content }}</{{ field.element_type }}>
+          {% else %}
+            <div class="cb-cart-card__meta-value">{{ field.content }}</div>
+          {% endif %}
+          {% if field.wrapper_element %}
+            </{{ field.wrapper_element }}>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</article>

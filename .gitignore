@@ -1,0 +1,47 @@
+# Ignore dependencies managed by Composer.
+/vendor/
+
+# Ignore Drupal core and contrib modules/themes/profiles.
+# These are managed by Composer in this project.
+/web/core/
+/web/modules/contrib/
+/web/themes/contrib/
+/web/profiles/contrib/
+/web/libraries/
+
+# Ignore site-specific configuration.
+# We usually commit settings.php but ignore settings.local.php.
+/web/sites/*/settings.local.php
+/web/sites/*/services.local.yml
+
+# Ignore user-generated content and private files.
+/web/sites/*/files/
+/web/sites/*/private/
+/web/sites/simpletest/
+
+# Ignore DDEV specific files that shouldn't be committed.
+.ddev/.dbimageBuild
+.ddev/.webimageBuild
+.ddev/db_snapshots
+.ddev/commands/db/
+.ddev/commands/host/
+.ddev/commands/web/
+.ddev/.importdb*
+
+# Ignore database dumps.
+*.sql
+*.sql.gz
+
+# OS and Editor files.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.bak
+*~
+
+# Misc
+.env
+.env.local
+node_modules/

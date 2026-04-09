@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* ---- Cart page heading (mockup: Go back + CONFIRM BOOKING DETAILS) ---- */
+  .cb-cart-page-heading {
+    @apply relative mx-auto max-w-6xl px-4 pb-6 pt-10 md:px-6;
+  }
+
+  .cb-cart-page-heading__back {
+    @apply absolute left-4 top-10 z-10 text-sm font-semibold text-blue-900 hover:underline md:left-6;
+  }
+
+  .cb-cart-page-heading__back-inner {
+    @apply inline-flex items-center gap-2.5;
+  }
+
+  .cb-cart-page-heading__back-icon {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-lg font-bold leading-none text-blue-900;
+  }
+
+  .cb-cart-page-heading__back-text {
+    @apply text-blue-900;
+  }
+
+  .cb-cart-page-heading__title {
+    @apply px-4 text-center font-display text-xl font-bold uppercase tracking-widest text-blue-900 md:text-2xl;
+  }
+
+  /* ---- Variation row (image + title + location) ---- */
+  .cb-cart-variation {
+    @apply flex items-start gap-4;
+  }
+
+  .cb-cart-variation__media {
+    @apply shrink-0;
+  }
+
+  .cb-cart-variation__thumb {
+    @apply h-24 w-24 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 bg-cover bg-center shadow-sm;
+  }
+
+  .cb-cart-variation__thumb--placeholder {
+    @apply bg-gradient-to-br from-slate-100 to-slate-200;
+    background-image: none;
+  }
+
+  .cb-cart-variation__body {
+    @apply min-w-0 flex-1 space-y-1;
+  }
+
+  .cb-cart-variation .field--name-title {
+    @apply text-lg font-semibold leading-snug text-blue-900;
+  }
+
+  .cb-cart-variation__location {
+    @apply flex items-center gap-1.5 text-sm font-medium text-slate-500;
+  }
+
+  .cb-cart-variation__location-icon {
+    @apply inline-flex h-4 w-4 shrink-0 items-center justify-center text-slate-400;
+  }
+
+  .cb-cart-variation__location-icon svg {
+    @apply h-4 w-4;
+  }
+
+  .cb-cart-variation__location-text {
+    @apply text-slate-600;
+  }
+
+  /* ---- Date / time slot (formatter output) ---- */
+  .cb-cart-slot {
+    @apply space-y-2;
+  }
+
+  .cb-cart-slot__date-row {
+    @apply text-sm;
+  }
+
+  .cb-cart-slot__time-row {
+    @apply flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .cb-cart-slot__time-text {
+    @apply min-w-0 flex-1;
+  }
+
+  .cb-cart-slot__label {
+    @apply font-semibold text-blue-900;
+  }
+
+  .cb-cart-slot__label--time {
+    @apply text-sm;
+  }
+
+  .cb-cart-slot__value {
+    @apply text-blue-900;
+  }
+
+  .cb-cart-slot__value--time {
+    @apply text-sm;
+  }
+
+  .cb-cart-slot-edit {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-blue-800 bg-white text-blue-900 shadow-sm transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2;
+  }
+
+  .cb-cart-slot-edit svg {
+    @apply h-4 w-4;
+  }
+
+  /* ---- View: two-column layout + cards (mockup gray cards) ---- */
+  .cb-cart-layout {
+    @apply flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10;
+  }
+
+  .cb-cart-layout__items {
+    @apply min-w-0 flex-1 space-y-4 lg:max-w-3xl;
+  }
+
+  .cb-cart-layout__summary {
+    @apply w-full shrink-0 lg:sticky lg:top-6 lg:w-80;
+  }
+
+  .cb-cart-layout__summary-inner {
+    @apply rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm;
+  }
+
+  .cb-cart-card {
+    @apply mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm;
+  }
+
+  .cb-cart-card__inner {
+    @apply flex flex-col gap-4 p-4 md:flex-row md:items-stretch md:justify-between md:p-5;
+  }
+
+  .cb-cart-card__primary {
+    @apply min-w-0 flex-1;
+  }
+
+  .cb-cart-card__slot-area {
+    @apply mt-4 border-t border-dashed border-slate-300 pt-4;
+  }
+
+  .cb-cart-card__meta {
+    @apply flex shrink-0 flex-col justify-center gap-3 border-t border-slate-200/80 pt-4 text-sm md:w-48 md:border-l md:border-t-0 md:pl-6 md:pt-0;
+  }
+
+  .cb-cart-card__meta-field {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .cb-cart-card__meta-label {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .cb-cart-card__meta-value {
+    @apply text-base font-semibold tabular-nums text-blue-900;
+  }
+
+  /* ---- Order summary (Commerce total) ---- */
+  .cb-order-total-summary {
+    @apply space-y-3 text-sm;
+  }
+
+  .cb-order-total-summary .order-total-line__subtotal,
+  .cb-order-total-summary .order-total-line__adjustment {
+    @apply flex items-center justify-between gap-4 border-b border-dashed border-slate-300 pb-3 text-blue-900;
+  }
+
+  .cb-order-total-summary .order-total-line-label {
+    @apply font-medium;
+  }
+
+  .cb-order-total-summary .order-total-line-value {
+    @apply font-semibold tabular-nums;
+  }
+
+  .cb-order-total-summary .order-total-line__total {
+    @apply flex items-center justify-between gap-4 border-t border-slate-400 pt-3;
+  }
+
+  .cb-order-total-summary .order-total-line__total .order-total-line-label {
+    @apply text-base font-bold text-blue-950;
+  }
+
+  .cb-order-total-summary .order-total-line__total .order-total-line-value {
+    @apply text-lg font-bold tabular-nums text-orange-600;
+  }
+
+  /* ---- Cart form actions ---- */
+  .cb-cart-form-actions {
+    @apply mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-10 pt-6 md:flex-row md:items-center md:justify-between md:px-6;
+  }
+
+  .cb-cart-form__update {
+    @apply text-sm font-semibold text-blue-900 underline underline-offset-2 hover:text-blue-950;
+  }
+
+  .cb-cart-form__checkout {
+    @apply w-full max-w-sm rounded-xl border-0 bg-blue-900 px-6 py-4 text-center text-sm font-bold uppercase tracking-wide text-white shadow-md hover:bg-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 lg:ml-auto lg:block;
+  }
+}

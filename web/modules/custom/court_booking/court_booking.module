@@ -1,0 +1,390 @@
+<?php
+
+/**
+ * @file
+ * Court booking UX: dedicated page, vanilla JS, Commerce BAT availability.
+ *
+ * Setup:
+ * - Enable theme: drush theme:enable misk && drush config:set system.theme default misk -y
+ *   (keep Claro for admin). Build Tailwind: cd web/themes/custom/misk && npm ci && npm run build
+ * - Enable module: drush en court_booking -y && drush cr
+ * - Permissions: grant "access court booking page" and "use court booking add" to desired roles
+ *   (often anonymous + authenticated for a public booking flow).
+ * - Configure: Administration » Commerce » Configuration » Court booking — map taxonomy term IDs
+ *   to a Commerce product (TERM_ID|p:PRODUCT_ID) or explicit variation IDs (TERM_ID|VID,VID).
+ */
+
+use Drupal\commerce_product\Entity\ProductInterface;
+use Drupal\commerce_product\Entity\ProductVariationInterface;
+use Drupal\Component\Utility\Html;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Url;
+use Drupal\court_booking\CourtBookingCartPageSettings;
+use Drupal\court_booking\CourtBookingVariationThumbnail;
+use Drupal\node\NodeInterface;
+use Drupal\views\Form\ViewsForm;
+
+/**
+ * Implements hook_theme().
+ */
+function court_booking_theme(): array {
+  return [
+    'court_booking_page' => [
+      'variables' => [
+        'sports_configured' => FALSE,
+      ],
+      'template' => 'court-booking-page',
+    ],
+    'court_booking_court_detail' => [
+      'variables' => [
+        'variation_label' => '',
+        'price_formatted' => '',
+        'images' => [],
+        'description' => '',
+        'unit_lines' => [],
+        'book_url' => '',
+        'amenities_url' => '',
+      ],
+      'template' => 'court-court-detail',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function court_booking_form_alter(&$form, FormStateInterface $form_state, $form_id): void {
+  $form_object = $form_state->getFormObject();
+  if ($form_object instanceof ViewsForm) {
+    $args = $form_state->getBuildInfo()['args'] ?? [];
+    $view = is_array($args) ? reset($args) : NULL;
+    if ($view && str_contains($view->storage->get('tag') ?? '', 'commerce_cart_form')) {
+      $form['#attributes']['class'][] = 'cb-commerce-cart-form';
+      if (isset($form['actions']['submit'])) {
+        $form['actions']['submit']['#attributes']['class'] = array_values(array_unique(array_merge(
+          $form['actions']['submit']['#attributes']['class'] ?? [],
+          ['cb-cart-form__update'],
+        )));
+      }
+      if (isset($form['actions']['checkout'])) {
+        $form['actions']['checkout']['#value'] = t('Proceed to payment');
+        $form['actions']['checkout']['#attributes']['class'] = array_values(array_unique(array_merge(
+          $form['actions']['checkout']['#attributes']['class'] ?? [],
+          ['cb-cart-form__checkout'],
+        )));
+      }
+      if (isset($form['actions']) && is_array($form['actions'])) {
+        $form['actions']['#attributes']['class'][] = 'cb-cart-form-actions';
+      }
+    }
+  }
+
+  if (!str_starts_with($form_id, 'commerce_order_item_add_to_cart_form')) {
+    return;
+  }
+  $form_object = $form_state->getFormObject();
+  if (!method_exists($form_object, 'getEntity')) {
+    return;
+  }
+  $order_item = $form_object->getEntity();
+  if (!$order_item || $order_item->getEntityTypeId() !== 'commerce_order_item') {
+    return;
+  }
+  $purchased = $order_item->getPurchasedEntity();
+  if (!$purchased) {
+    return;
+  }
+  $mode = \Drupal::service('commerce_bat.availability_manager')->getModeForVariation($purchased);
+  if ($mode !== 'lesson') {
+    return;
+  }
+  if (isset($form['field_cbat_rental_date'])) {
+    $form['field_cbat_rental_date']['#access'] = FALSE;
+  }
+  $form['court_booking_book_link'] = [
+    '#type' => 'link',
+    '#title' => t('Book a time on the amenities page'),
+    '#url' => Url::fromRoute('court_booking.booking_page'),
+    '#weight' => -5,
+    '#attributes' => ['class' => ['button', 'button--primary']],
+  ];
+}
+
+/**
+ * Implements hook_entity_view_alter().
+ */
+function court_booking_entity_view_alter(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display): void {
+  if (!$entity instanceof ProductInterface) {
+    return;
+  }
+  if (!court_booking_product_has_mapped_variation($entity)) {
+    return;
+  }
+  $build['court_booking_cta'] = [
+    '#type' => 'link',
+    '#title' => t('Book a court'),
+    '#url' => Url::fromRoute('court_booking.booking_page'),
+    '#weight' => 15,
+    '#attributes' => ['class' => ['button', 'button--primary']],
+  ];
+}
+
+/**
+ * Raw sport_mappings rows from config.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function court_booking_sport_mappings(): array {
+  return \Drupal::config('court_booking.settings')->get('sport_mappings') ?: [];
+}
+
+/**
+ * Returns TRUE if the variation is allowed for booking (product or legacy list).
+ */
+function court_booking_variation_is_configured(ProductVariationInterface $variation): bool {
+  $pid = (int) $variation->getProductId();
+  $vid = (int) $variation->id();
+  foreach (court_booking_sport_mappings() as $row) {
+    $prod = (int) ($row['product_id'] ?? 0);
+    if ($prod > 0 && $prod === $pid) {
+      return TRUE;
+    }
+    foreach ($row['variation_ids'] ?? [] as $x) {
+      if ((int) $x === $vid) {
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * First configured sport term ID for this variation, or 0.
+ */
+function court_booking_sport_tid_for_variation(ProductVariationInterface $variation): int {
+  $pid = (int) $variation->getProductId();
+  $vid = (int) $variation->id();
+  foreach (court_booking_sport_mappings() as $row) {
+    $tid = (int) ($row['sport_tid'] ?? 0);
+    if (!$tid) {
+      continue;
+    }
+    $prod = (int) ($row['product_id'] ?? 0);
+    if ($prod > 0 && $prod === $pid) {
+      return $tid;
+    }
+    foreach ($row['variation_ids'] ?? [] as $x) {
+      if ((int) $x === $vid) {
+        return $tid;
+      }
+    }
+  }
+  return 0;
+}
+
+/**
+ * Returns TRUE if the product or any of its variations is referenced in mappings.
+ */
+function court_booking_product_has_mapped_variation(ProductInterface $product): bool {
+  $product_id = (int) $product->id();
+  foreach (court_booking_sport_mappings() as $row) {
+    if ((int) ($row['product_id'] ?? 0) === $product_id) {
+      return TRUE;
+    }
+    $legacy = array_map('intval', $row['variation_ids'] ?? []);
+    foreach ($product->getVariations() as $variation) {
+      if (in_array((int) $variation->id(), $legacy, TRUE)) {
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * All bookable variation IDs (from products + legacy lists).
+ *
+ * @return int[]
+ */
+function court_booking_mapped_variation_ids(): array {
+  $ids = [];
+  $product_storage = \Drupal::entityTypeManager()->getStorage('commerce_product');
+  foreach (court_booking_sport_mappings() as $row) {
+    $prod = (int) ($row['product_id'] ?? 0);
+    if ($prod > 0) {
+      $product = $product_storage->load($prod);
+      if ($product instanceof ProductInterface) {
+        foreach ($product->getVariations() as $v) {
+          if ($v->isPublished()) {
+            $ids[] = (int) $v->id();
+          }
+        }
+      }
+    }
+    foreach ($row['variation_ids'] ?? [] as $vid) {
+      $ids[] = (int) $vid;
+    }
+  }
+  return array_values(array_unique(array_filter($ids)));
+}
+
+/**
+ * Per-request cache for court full node display data (view_alter + preprocess).
+ *
+ * @return array<string, mixed>
+ */
+function _court_booking_court_full_display_data(NodeInterface $node): array {
+  $static = &drupal_static(__FUNCTION__, []);
+  $account = \Drupal::currentUser();
+  $key = $node->id() . ':' . $account->id();
+  if (!isset($static[$key])) {
+    $static[$key] = \Drupal::service('court_booking.court_node_display')->buildPreprocessData($node, $account);
+  }
+  return $static[$key];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view_alter() for node entities.
+ */
+function court_booking_node_view_alter(array &$build, NodeInterface $node, EntityViewDisplayInterface $display): void {
+  if ($node->bundle() !== 'court' || $display->getOriginalMode() !== 'full') {
+    return;
+  }
+  $data = _court_booking_court_full_display_data($node);
+  $build['#cache']['tags'] = array_values(array_unique(array_merge(
+    $build['#cache']['tags'] ?? [],
+    $data['cache_tags'],
+  )));
+  $build['#cache']['contexts'] = array_values(array_unique(array_merge(
+    $build['#cache']['contexts'] ?? [],
+    $data['cache_contexts'],
+  )));
+  $build['#attached']['library'][] = 'misk/global';
+}
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function court_booking_preprocess_node(array &$variables): void {
+  $node = $variables['node'] ?? NULL;
+  if (!$node instanceof NodeInterface || $node->bundle() !== 'court') {
+    return;
+  }
+  if (($variables['view_mode'] ?? '') !== 'full') {
+    return;
+  }
+
+  $data = _court_booking_court_full_display_data($node);
+
+  $variables['court_booking_hero_slot'] = $data['hero_slot'];
+  $variables['court_booking_hero_hint'] = (string) t('');
+  $variables['court_booking_hero_background_type'] = $data['hero_background_type'] ?? 'none';
+  $variables['court_booking_hero_video_url'] = $data['hero_video_url'] ?? '';
+  $variables['court_booking_hero_image_url'] = $data['hero_image_url'];
+  $variables['court_booking_price_formatted'] = $data['price_formatted'];
+  $variables['court_booking_cart_url'] = $data['cart_url'];
+  $variables['court_booking_booking_back_url'] = $data['booking_back_url'];
+}
+
+/**
+ * Implements hook_preprocess_commerce_product_variation().
+ */
+function court_booking_preprocess_commerce_product_variation(array &$variables): void {
+  if (($variables['elements']['#view_mode'] ?? '') !== 'cart') {
+    return;
+  }
+  $variation = $variables['product_variation_entity'] ?? NULL;
+  if (!$variation instanceof ProductVariationInterface) {
+    return;
+  }
+  $file_url_generator = \Drupal::service('file_url_generator');
+  $thumb = CourtBookingVariationThumbnail::data($variation, $file_url_generator);
+  $variables['cart_thumbnail_url'] = $thumb['url'];
+  $variables['cart_location_label'] = '';
+  $node = CourtBookingVariationThumbnail::courtNode($variation);
+  if ($node instanceof NodeInterface) {
+    if ($node->hasField('field_court_location') && !$node->get('field_court_location')->isEmpty()) {
+      $variables['cart_location_label'] = trim($node->get('field_court_location')->first()->getString());
+    }
+    else {
+      $variables['cart_location_label'] = $node->label();
+    }
+    $variables['#cache']['tags'] = Cache::mergeTags($variables['#cache']['tags'] ?? [], $node->getCacheTags());
+  }
+  $variables['#cache']['tags'] = Cache::mergeTags($variables['#cache']['tags'] ?? [], $thumb['cache_tags'], $variation->getCacheTags());
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function court_booking_preprocess_page(array &$variables): void {
+  $route = \Drupal::routeMatch()->getRouteName();
+  if ($route !== 'commerce_cart.page') {
+    return;
+  }
+
+  $go_back = Html::escape((string) t('Go back'));
+  $variables['page']['content']['court_booking_cart_heading'] = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['cb-cart-page-heading']],
+    'back' => [
+      '#type' => 'link',
+      '#title' => Markup::create(
+        '<span class="cb-cart-page-heading__back-inner">' .
+        '<span class="cb-cart-page-heading__back-icon" aria-hidden="true">‹</span>' .
+        '<span class="cb-cart-page-heading__back-text">' . $go_back . '</span></span>'
+      ),
+      '#url' => Url::fromRoute('court_booking.booking_page'),
+      '#attributes' => [
+        'class' => ['cb-cart-page-heading__back'],
+      ],
+      '#weight' => 0,
+    ],
+    'title' => [
+      '#type' => 'html_tag',
+      '#tag' => 'h1',
+      '#value' => t('Confirm booking details'),
+      '#attributes' => ['class' => ['cb-cart-page-heading__title']],
+      '#weight' => 5,
+    ],
+    '#weight' => -20,
+  ];
+
+  // page.content was already #sorted by the block pipeline; new children stay at
+  // the end unless we clear the flag and re-sort by #weight.
+  unset($variables['page']['content']['#sorted']);
+  Element::children($variables['page']['content'], TRUE);
+
+  $built = CourtBookingCartPageSettings::build(
+    \Drupal::currentUser(),
+    \Drupal::service('commerce_cart.cart_provider'),
+    \Drupal::service('commerce_bat.availability_manager'),
+    \Drupal::service('commerce_price.currency_formatter'),
+    \Drupal::service('file_url_generator'),
+    \Drupal::configFactory(),
+  );
+  if ($built) {
+    $variables['#attached']['library'][] = 'court_booking/cart_slot';
+    $variables['#attached']['drupalSettings']['courtBookingCart'] = $built['settings'];
+    $variables['#cache']['tags'] = Cache::mergeTags($variables['#cache']['tags'] ?? [], $built['cache_tags']);
+    $variables['#cache']['contexts'] = array_values(array_unique(array_merge(
+      $variables['#cache']['contexts'] ?? [],
+      $built['cache_contexts'],
+    )));
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function court_booking_entity_type_alter(array &$entity_types): void {
+  if (isset($entity_types['bat_event'])) {
+    $entity_types['bat_event']->setListBuilderClass(\Drupal\court_booking\BatEventListBuilder::class);
+  }
+}
+

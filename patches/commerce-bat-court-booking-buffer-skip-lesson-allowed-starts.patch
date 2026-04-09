@@ -1,0 +1,14 @@
+diff --git a/src/Availability/AvailabilityManager.php b/src/Availability/AvailabilityManager.php
+--- a/src/Availability/AvailabilityManager.php
++++ b/src/Availability/AvailabilityManager.php
+@@ -1905,8 +1905,8 @@
+         return FALSE;
+       }
+ 
+-      // If we have an allowed list, enforce it.
+-      if (!empty($allowed)) {
++      // If we have an allowed list, enforce it (unless court_booking buffer window).
++      if (!empty($allowed) && !$court_booking_buffer_lesson_window) {
+         $start_hm = $local_start->format('H:i');
+         if (!in_array($start_hm, $allowed, TRUE)) {
+           if (defined('COMMERCE_BAT_DEBUG') && COMMERCE_BAT_DEBUG) {

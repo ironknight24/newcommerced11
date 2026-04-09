@@ -1,0 +1,12 @@
+name: Misk
+type: theme
+description: 'Minimal storefront theme with Tailwind-compiled utilities for custom booking UX.'
+package: Custom
+core_version_requirement: ^10 || ^11
+base theme: false
+libraries:
+  - misk/global
+regions:
+  header: Header
+  content: Content
+  footer: Footer

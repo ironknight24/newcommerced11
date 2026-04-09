@@ -1,0 +1,93 @@
+diff --git a/src/Availability/AvailabilityManager.php b/src/Availability/AvailabilityManager.php
+--- a/src/Availability/AvailabilityManager.php
++++ b/src/Availability/AvailabilityManager.php
+@@ -410,9 +410,36 @@
+   }
+ 
+   /**
+-   * Get the availability timezone (UTC).
++   * Timezone used to interpret lesson HH:MM times and local calendar days.
++   *
++   * Same resolution order as Drupal core: user timezone when configurable and
++   * set, else site default (system.date:timezone.default), else PHP default.
++   * BAT event storage remains UTC; this is for wall-clock slot generation.
+    */
+   protected function getSiteTimezone(): \DateTimeZone {
++    $date = \Drupal::config('system.date');
++    $candidates = [];
++    if ($date->get('timezone.user.configurable')) {
++      $user_tz = trim((string) \Drupal::currentUser()->getTimeZone());
++      if ($user_tz !== '') {
++        $candidates[] = $user_tz;
++      }
++    }
++    $site_default = trim((string) ($date->get('timezone.default') ?: ''));
++    if ($site_default !== '') {
++      $candidates[] = $site_default;
++    }
++    $runtime = trim((string) date_default_timezone_get());
++    if ($runtime !== '' && !in_array($runtime, $candidates, TRUE)) {
++      $candidates[] = $runtime;
++    }
++    foreach ($candidates as $name) {
++      try {
++        return new \DateTimeZone($name);
++      }
++      catch (\Throwable $e) {
++      }
++    }
+ 
+     return DateTimeHelper::utcTz();
+   }
+@@ -1437,15 +1464,18 @@
+       $last = end($dates);
+       $end_date = $last ? (clone $last)->add($period->getDateInterval()) : NULL;
+     }
++    $display_tz = $this->getSiteTimezone()->getName();
+     $cache_key = 'commerce_bat_calendar:' . $variation->id() . ':' . $mode . ':' .
+                  ($start_date ? $start_date->format('Y-m-d-H-i') : 'null') . ':' .
+                  ($end_date ? $end_date->format('Y-m-d-H-i') : 'null') . ':' .
++                 $display_tz . ':' .
+                  md5(serialize($context));
+ 
+     // Check cache (5 minute TTL).
+     $cache_tags = [
+       'commerce_bat_calendar:' . $variation->id(),
+       'commerce_bat_calendar_settings',
++      'config:system.date',
+     ];
+     $cache = \Drupal::cache()->get($cache_key);
+     if ($cache && $cache->data && $cache->expire > $this->time->getRequestTime()) {
+@@ -1798,9 +1828,10 @@
+ 
+         return FALSE;
+       }
+-      if ($duration_minutes <= 0 || abs($duration_minutes - $slot_length) > 1) {
++      // Allow one or more contiguous lesson slots (duration must be a whole multiple of slot length).
++      if ($duration_minutes <= 0 || ($duration_minutes % $slot_length) !== 0) {
+         if (defined('COMMERCE_BAT_DEBUG') && COMMERCE_BAT_DEBUG) {
+-          $this->logger->debug('Lesson availability failed: duration mismatch for variation @id. Expected @slot, got @duration.', [
++          $this->logger->debug('Lesson availability failed: duration not a multiple of slot for variation @id. Slot @slot min, duration @duration min.', [
+             '@id' => $variation->id(),
+             '@slot' => $slot_length,
+             '@duration' => $duration_minutes,
+@@ -2780,6 +2811,7 @@
+     $unit = $this->ensureUnitForVariation($variation);
+     $slot_length = max(1, $this->getLessonSlotLength($variation));
+     $tz = $this->getSiteTimezone();
++    $utc_tz = DateTimeHelper::utcTz();
+     $schedule = NULL;
+     if ($variation->hasField('field_cbat_schedule') && !$variation->get('field_cbat_schedule')->isEmpty()) {
+       $candidate = $variation->get('field_cbat_schedule')->entity;
+@@ -2814,8 +2846,9 @@
+       $end_boundary = (clone $start_boundary)->add(new \DateInterval('P1D'));
+     }
+     $results = [];
+-    $day_cursor = (clone $start_boundary)->setTime(0, 0);
+-    while ($day_cursor < $end_boundary) {
++    // Walk each local calendar day that intersects [start_boundary, end_boundary).
++    $day_cursor = $start_boundary->setTimezone($tz)->setTime(0, 0, 0);
++    while ($day_cursor->setTimezone($utc_tz) < $end_boundary) {
+       $allowed_times_for_day = $this->getLessonAllowedTimesForDay($variation, $day_cursor);
+       $slots = $this->buildLessonSlotsForDay($day_cursor, $start_boundary, $end_boundary, $allowed_times_for_day, $slot_length);
+       if (empty($slots) && $allowed_times_for_day === []) {

@@ -1,0 +1,35 @@
+{#
+/**
+ * Cart form: line items + Commerce rows.footer (order total).
+ *
+ * @see commerce_cart_preprocess_views_view()
+ */
+#}
+{% if title %}
+  <h3 class="sr-only">{{ title }}</h3>
+{% endif %}
+
+<div class="cb-cart-layout">
+  <div class="cb-cart-layout__items">
+    {% for key, row in rows %}
+      {% if key != 'footer' %}
+        {%
+          set row_classes = [
+            default_row_class ? 'views-row',
+          ]
+        %}
+        <div{{ row.attributes.addClass(row_classes) }}>
+          {{- row.content -}}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if rows.footer is defined %}
+    <aside class="cb-cart-layout__summary" aria-label="{{ 'Order summary'|t }}">
+      <div class="cb-cart-layout__summary-inner">
+        {{ rows.footer.content }}
+      </div>
+    </aside>
+  {% endif %}
+</div>

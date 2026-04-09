@@ -1,0 +1,56 @@
+{#
+/**
+ * @file
+ * Single court (variation) detail for the booking flow.
+ */
+#}
+<div class="court-court-detail font-sans text-slate-900">
+  <div class="mb-8">
+    <a href="{{ amenities_url }}" class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
+      <span aria-hidden="true">←</span>
+      {{ 'Back to amenities'|t }}
+    </a>
+  </div>
+
+  <article class="mx-auto max-w-3xl">
+    <h1 class="font-display text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
+      {{ variation_label }}
+    </h1>
+    {% if price_formatted %}
+      <p class="mt-2 text-lg text-slate-600">{{ price_formatted }}</p>
+    {% endif %}
+
+    {% if images is not empty %}
+      <div class="mt-8 grid gap-4 sm:grid-cols-2">
+        {% for img in images %}
+          <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+            <img src="{{ img.url }}" alt="{{ img.alt }}" class="aspect-[4/3] h-full w-full object-cover" loading="lazy" width="800" height="600" />
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if description %}
+      <div class="prose prose-slate mt-8 max-w-none text-slate-700">
+        {{ description|raw }}
+      </div>
+    {% endif %}
+
+    {% if unit_lines is not empty %}
+      <dl class="mt-8 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+        {% for line in unit_lines %}
+          <div class="flex flex-col gap-1 sm:flex-row sm:gap-4">
+            <dt class="text-sm font-semibold text-slate-500 sm:w-32 sm:shrink-0">{{ line.label }}</dt>
+            <dd class="text-sm text-slate-900">{{ line.value }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+    {% endif %}
+
+    <div class="mt-10 flex flex-wrap gap-3">
+      <a href="{{ book_url }}" class="inline-flex items-center justify-center rounded-xl bg-[#02216E] px-5 py-3 text-sm font-semibold text-white hover:bg-[#011550] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]">
+        {{ 'Book this court'|t }}
+      </a>
+    </div>
+  </article>
+</div>

@@ -1,0 +1,25 @@
+diff --git a/modules/bat_event/src/Entity/Form/EventForm.php b/modules/bat_event/src/Entity/Form/EventForm.php
+--- a/modules/bat_event/src/Entity/Form/EventForm.php
++++ b/modules/bat_event/src/Entity/Form/EventForm.php
+@@ -218,8 +218,8 @@
+ 
+     $values = $form_state->getValues();
+ 
+-    $start_date = new \DateTime($values['event_dates'][0]['value']->format('Y-m-d H:i:s'));
+-    $end_date = new \DateTime($values['event_dates'][0]['end_value']->format('Y-m-d H:i:s'));
++    $start_date = \DateTime::createFromInterface($values['event_dates'][0]['value'])->setTimezone(new \DateTimeZone('UTC'));
++    $end_date = \DateTime::createFromInterface($values['event_dates'][0]['end_value'])->setTimezone(new \DateTimeZone('UTC'));
+ 
+     // The end date must be greater or equal than start date.
+     if ($end_date < $start_date) {
+@@ -282,8 +282,8 @@
+     $data['event_type'] = bat_event_type_load($data['event']->bundle());
+     $data['values'] = $form_state->getValues();
+ 
+-    $data['start_date'] = new \DateTime($data['values']['event_dates'][0]['value']->format('Y-m-d H:i:s'));
+-    $data['end_date'] = new \DateTime($data['values']['event_dates'][0]['end_value']->format('Y-m-d H:i:s'));
++    $data['start_date'] = \DateTime::createFromInterface($data['values']['event_dates'][0]['value'])->setTimezone(new \DateTimeZone('UTC'));
++    $data['end_date'] = \DateTime::createFromInterface($data['values']['event_dates'][0]['end_value'])->setTimezone(new \DateTimeZone('UTC'));
+ 
+     $data['event']->setStartDate($data['start_date']);
+     $data['event']->setEndDate($data['end_date']);

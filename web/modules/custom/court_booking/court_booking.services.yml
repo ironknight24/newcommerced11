@@ -1,0 +1,46 @@
+services:
+  logger.channel.court_booking:
+    parent: logger.channel_base
+    arguments: ['court_booking']
+
+  court_booking.bat_unit_ensurer:
+    class: Drupal\court_booking\BatUnitEnsurer
+    arguments:
+      - '@commerce_bat.availability_manager'
+      - '@account_switcher'
+      - '@entity_type.manager'
+      - '@database'
+
+  court_booking.cart_comparison_fields:
+    class: Drupal\court_booking\EventSubscriber\CartOrderItemComparisonSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  court_booking.order_place_bat_sync:
+    class: Drupal\court_booking\EventSubscriber\OrderPlaceBatSyncSubscriber
+    arguments: ['@logger.channel.court_booking']
+    tags:
+      - { name: event_subscriber }
+
+  court_booking.court_node_display:
+    class: Drupal\court_booking\CourtBookingCourtNodeDisplay
+    arguments:
+      - '@entity_type.manager'
+      - '@commerce_cart.cart_provider'
+      - '@commerce_store.current_store'
+      - '@commerce_price.currency_formatter'
+      - '@config.factory'
+      - '@date.formatter'
+      - '@file_url_generator'
+
+  court_booking.slot_booking:
+    class: Drupal\court_booking\CourtBookingSlotBooking
+    arguments:
+      - '@commerce_bat.availability_manager'
+      - '@config.factory'
+
+  court_booking.access.cart_slot_order_item:
+    class: Drupal\court_booking\Access\CartSlotOrderItemAccessCheck
+    arguments: ['@commerce_cart.cart_provider']
+    tags:
+      - { name: access_check, applies_to: _court_booking_cart_slot_order_item }

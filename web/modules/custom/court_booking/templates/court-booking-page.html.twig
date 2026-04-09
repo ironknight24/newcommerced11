@@ -1,0 +1,109 @@
+{#
+/**
+ * @file
+ * Booking page: sport pills, month header, date strip, duration, times, pitches — court_booking.js.
+ */
+#}
+<div class="court-booking-page font-sans text-[#02216E] mx-auto max-w-5xl px-4 py-8 md:px-6 md:py-10" data-drupal-selector="court-booking-root">
+	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<a href="{{ path('<front>') }}" class="inline-flex items-center gap-2 text-sm font-medium text-[#02216E] hover:text-[#02216E]">
+			<span aria-hidden="true">←</span>
+			{{ 'Go Back'|t }}
+		</a>
+		<h1 class="font-display text-3xl font-semibold tracking-tight text-[#02216E] md:text-4xl">
+			{{ 'AMENITIES'|t }}
+		</h1>
+		<div></div>
+	</div>
+
+	{% if not sports_configured %}
+		<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
+			{{ 'Court booking is not configured yet. Map each sport taxonomy term to variation IDs in the settings form.'|t }}
+			<a href="{{ path('court_booking.settings') }}" class="font-semibold text-amber-950 underline hover:no-underline">{{ 'Court booking settings'|t }}</a>
+		</div>
+	{% endif %}
+
+	<section class="mt-8" aria-labelledby="cb-sport-label">
+		<h2 id="cb-sport-label" class="sr-only">{{ 'Sport'|t }}</h2>
+		<div id="cb-sports" class="flex flex-wrap gap-2" role="tablist" aria-label="{{ 'Choose sport'|t }}"></div>
+	</section>
+
+	<section class="mt-10" aria-labelledby="cb-dates-label">
+		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<h2 id="cb-dates-label" class="sr-only">{{ 'Choose date'|t }}</h2>
+			<div class="flex flex-wrap items-center gap-2">
+				<button type="button" id="cb-strip-prev" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-[#02216E] hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]" aria-label="{{ 'Previous month'|t }}">‹</button>
+				<p id="cb-month-year" class="min-w-[8rem] font-display text-lg font-bold uppercase tracking-wide text-[#02216E]" aria-live="polite"></p>
+				<button type="button" id="cb-strip-next" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-[#02216E] hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]" aria-label="{{ 'Next month'|t }}">›</button>
+			</div>
+			<button type="button" id="cb-cal-open" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#02216E] hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]">
+				<img src="/modules/custom/court_booking/images/calendar-lines.png" alt="Calendar" class="w-4 h-4"/>
+				{{ 'View Calendar'|t }}
+			</button>
+		</div>
+		<div class="relative flex items-center gap-1">
+			<button type="button" id="cb-dates-prev" class="z-10 hidden shrink-0 rounded-lg border border-slate-300 bg-white/90 p-2 text-[#02216E] shadow-sm backdrop-blur hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E] sm:flex" aria-label="{{ 'Scroll dates left'|t }}">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+			</button>
+			<div id="cb-dates" class="flex min-w-0 flex-1 gap-2 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label="{{ 'Dates'|t }}"></div>
+			<button type="button" id="cb-dates-next" class="z-10 hidden shrink-0 rounded-lg border border-slate-300 bg-white/90 p-2 text-[#02216E] shadow-sm backdrop-blur hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E] sm:flex" aria-label="{{ 'Scroll dates right'|t }}">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+			</button>
+		</div>
+	</section>
+
+	<section class="mt-10" aria-labelledby="cb-duration-label">
+		<h2 id="cb-duration-label" class="mb-3 font-display text-lg font-semibold text-[#02216E]">
+			{{ 'Select Duration'|t }}
+		</h2>
+
+		<div class="relative max-w-md">
+			<select id="cb-duration" class="w-full appearance-none rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 pr-10 font-display text-base font-semibold text-[#02216E] focus:border-[#02216E] focus:outline-none focus:ring-2 focus:ring-[#02216E]" aria-describedby="cb-duration-label"></select>
+
+			<img src="/modules/custom/court_booking/images/clock-three.png" alt="Clock" class="pointer-events-none absolute right-3 top-1/2 w-4 h-4 -translate-y-1/2"/>
+		</div>
+	</section>
+
+	<section class="mt-10" aria-labelledby="cb-times-label">
+		<h2 id="cb-times-label" class="mb-3 font-display text-lg font-semibold text-[#02216E]">{{ 'Time Slot'|t }}</h2>
+		<div id="cb-times" class="flex flex-wrap gap-2" role="list" aria-label="{{ 'Time slots'|t }}"></div>
+	</section>
+
+	<section class="mt-10" aria-labelledby="cb-courts-label">
+		<h2 id="cb-courts-label" class="mb-3 font-display text-lg font-semibold text-[#02216E]">{{ 'Select Pitch'|t }}</h2>
+		<div id="cb-courts" class="grid gap-4 sm:grid-cols-2" role="list"></div>
+	</section>
+
+	<div id="cb-status" class="mt-8 min-h-[1.5rem] text-sm font-medium text-rose-600 empty:hidden" role="status" aria-live="polite"></div>
+
+	{# Calendar modal #}
+	<div id="cb-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+		<div id="cb-modal-backdrop" class="absolute inset-0 bg-slate-900/60" tabindex="-1"></div>
+		<div class="flex min-h-full items-start justify-center p-4 pt-12 sm:pt-20">
+			<div id="cb-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cb-cal-title" class="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+				<div class="mb-4 flex items-center justify-between">
+					<h2 id="cb-cal-title" class="font-display text-xl font-bold text-[#02216E]">{{ 'Select Date'|t }}</h2>
+					<button type="button" id="cb-cal-close" class="rounded-lg p-2 text-[#02216E] hover:bg-slate-100 hover:text-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]" aria-label="{{ 'Close'|t }}">×</button>
+				</div>
+				<div class="mb-4 flex items-center justify-between">
+					<button type="button" id="cb-cal-prev" class="rounded-lg border border-slate-200 px-3 py-1 text-sm font-semibold text-[#02216E] hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]" aria-label="{{ 'Previous month'|t }}">‹</button>
+					<p id="cb-cal-month-label" class="font-display text-sm font-bold uppercase tracking-wide text-[#02216E]"></p>
+					<button type="button" id="cb-cal-next" class="rounded-lg border border-slate-200 px-3 py-1 text-sm font-semibold text-[#02216E] hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]" aria-label="{{ 'Next month'|t }}">›</button>
+				</div>
+				<div class="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase text-[#02216E]">
+					<span>{{ 'Su'|t }}</span>
+					<span>{{ 'Mo'|t }}</span>
+					<span>{{ 'Tu'|t }}</span>
+					<span>{{ 'We'|t }}</span>
+					<span>{{ 'Th'|t }}</span>
+					<span>{{ 'Fr'|t }}</span>
+					<span>{{ 'Sa'|t }}</span>
+				</div>
+				<div id="cb-cal-grid" class="grid grid-cols-7 gap-1"></div>
+				<button type="button" id="cb-cal-apply" class="mt-6 w-full rounded-xl bg-[#02216E] py-3 font-display text-sm font-semibold text-white hover:bg-[#011550] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]">
+					{{ 'Select Date'|t }}
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
