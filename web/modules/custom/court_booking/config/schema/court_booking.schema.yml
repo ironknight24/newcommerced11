@@ -22,10 +22,6 @@ court_booking.settings:
               type: integer
     days_ahead:
       type: integer
-    excluded_weekdays:
-      type: sequence
-      sequence:
-        type: integer
     order_type_id:
       type: string
       label: 'Commerce order type ID for the cart'
@@ -63,6 +59,9 @@ court_booking.settings:
             type: string
           reason:
             type: string
+    sport_booking_overrides:
+      type: mapping
+      label: 'Per-sport booking rule overrides (keys = sport taxonomy term ID)'
 
 field.formatter.settings.court_booking_cart_rental_slot:
   type: mapping

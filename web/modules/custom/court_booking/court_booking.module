@@ -367,6 +367,7 @@ function court_booking_preprocess_page(array &$variables): void {
     \Drupal::service('commerce_price.currency_formatter'),
     \Drupal::service('file_url_generator'),
     \Drupal::configFactory(),
+    \Drupal::service('court_booking.sport_settings'),
   );
   if ($built) {
     $variables['#attached']['library'][] = 'court_booking/cart_slot';

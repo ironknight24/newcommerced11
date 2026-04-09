@@ -20,6 +20,7 @@ final class CourtBookingSlotBooking {
   public function __construct(
     protected AvailabilityManagerInterface $availabilityManager,
     protected ConfigFactoryInterface $configFactory,
+    protected CourtBookingSportSettings $sportSettings,
   ) {}
 
   /**
@@ -69,10 +70,10 @@ final class CourtBookingSlotBooking {
       return $fail(400, (string) $this->t('Invalid date format.'));
     }
 
-    $cb_config = $this->configFactory->get('court_booking.settings');
+    $rules = $this->sportSettings->getMergedForVariation($variation);
     $slot_len_minutes = max(1, (int) $this->availabilityManager->getLessonSlotLength($variation));
-    $buffer_minutes = max(0, min(180, (int) ($cb_config->get('buffer_minutes') ?? 0)));
-    $same_day_cutoff_hm = trim((string) ($cb_config->get('same_day_cutoff_hm') ?? ''));
+    $buffer_minutes = max(0, min(180, (int) ($rules['buffer_minutes'] ?? 0)));
+    $same_day_cutoff_hm = trim((string) ($rules['same_day_cutoff_hm'] ?? ''));
     $diff_sec = $end->getTimestamp() - $start->getTimestamp();
     if ($diff_sec <= 0) {
       return $fail(400, (string) $this->t('End time must be after start time.'));
@@ -81,7 +82,7 @@ final class CourtBookingSlotBooking {
       return $fail(400, (string) $this->t('Booking times must align to whole minutes.'));
     }
     $block_minutes = (int) ($diff_sec / 60);
-    $max_hours = max(1, min(24, (int) ($cb_config->get('max_booking_hours') ?: 4)));
+    $max_hours = max(1, min(24, (int) ($rules['max_booking_hours'] ?? 4)));
     $max_play_minutes = $max_hours * 60;
 
     if ($buffer_minutes > 0) {
@@ -108,7 +109,7 @@ final class CourtBookingSlotBooking {
 
     $site_tz = CourtBookingRegional::effectiveTimeZoneId($this->configFactory, $account);
     if ($buffer_minutes > 0) {
-      $open_hm = (string) ($cb_config->get('booking_day_start') ?: '06:00');
+      $open_hm = (string) ($rules['booking_day_start'] ?: '06:00');
       $open_m = $this->parseHmToMinutes($open_hm);
       if ($open_m !== NULL) {
         $start_m = $this->localMinutesFromMidnight($start, $site_tz);
@@ -122,8 +123,8 @@ final class CourtBookingSlotBooking {
       $start,
       $end,
       $site_tz,
-      (string) ($cb_config->get('booking_day_start') ?: '06:00'),
-      (string) ($cb_config->get('booking_day_end') ?: '23:00'),
+      (string) ($rules['booking_day_start'] ?: '06:00'),
+      (string) ($rules['booking_day_end'] ?: '23:00'),
     )) {
       return $fail(400, (string) $this->t('That time is outside the allowed booking hours.'));
     }
@@ -134,12 +135,12 @@ final class CourtBookingSlotBooking {
       $start,
       $site_tz,
       (int) $variation->id(),
-      (array) ($cb_config->get('resource_closures') ?? []),
+      (array) ($rules['resource_closures'] ?? []),
     );
     if ($closure_message !== NULL) {
       return $fail(400, $closure_message);
     }
-    if ($this->isBlackoutDate($start, $site_tz, (array) ($cb_config->get('blackout_dates') ?? []))) {
+    if ($this->isBlackoutDate($start, $site_tz, (array) ($rules['blackout_dates'] ?? []))) {
       return $fail(400, (string) $this->t('Bookings are closed on this date.'));
     }
 
@@ -175,16 +176,20 @@ final class CourtBookingSlotBooking {
     int $quantity,
     AccountInterface $account,
   ): array {
-    $cb_config = $this->configFactory->get('court_booking.settings');
-    $buffer_minutes = max(0, min(180, (int) ($cb_config->get('buffer_minutes') ?? 0)));
+    $first_vid = (int) reset($variation_ids);
+    $first_variation = $first_vid > 0 ? \Drupal\commerce_product\Entity\ProductVariation::load($first_vid) : NULL;
+    $rules = $first_variation instanceof ProductVariationInterface
+      ? $this->sportSettings->getMergedForVariation($first_variation)
+      : $this->sportSettings->getGlobalBookingRules();
+    $buffer_minutes = max(0, min(180, (int) ($rules['buffer_minutes'] ?? 0)));
     if ($buffer_minutes <= 0 || $variation_ids === []) {
       return [];
     }
-    $max_hours = max(1, min(24, (int) ($cb_config->get('max_booking_hours') ?: 4)));
+    $max_hours = max(1, min(24, (int) ($rules['max_booking_hours'] ?? 4)));
     $duration_hours = max(1, min($max_hours, $duration_hours));
     $play_minutes = $duration_hours * 60;
-    $open_hm = (string) ($cb_config->get('booking_day_start') ?: '06:00');
-    $close_hm = (string) ($cb_config->get('booking_day_end') ?: '23:00');
+    $open_hm = (string) ($rules['booking_day_start'] ?: '06:00');
+    $close_hm = (string) ($rules['booking_day_end'] ?: '23:00');
     $open_m = $this->parseHmToMinutes($open_hm);
     $close_m = $this->parseHmToMinutes($close_hm);
     $site_tz_id = CourtBookingRegional::effectiveTimeZoneId($this->configFactory, $account);

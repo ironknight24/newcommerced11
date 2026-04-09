@@ -6,6 +6,7 @@ use CommerceGuys\Intl\Formatter\CurrencyFormatterInterface;
 use Drupal\commerce_bat\Availability\AvailabilityManagerInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\court_booking\BookingTimezoneTrait;
+use Drupal\court_booking\CourtBookingSportSettings;
 use Drupal\court_booking\CourtBookingVariationThumbnail;
 use Drupal\Core\Access\CsrfRequestHeaderAccessCheck;
 use Drupal\Core\Controller\ControllerBase;
@@ -23,6 +24,7 @@ class BookingPageController extends ControllerBase {
   public function __construct(
     protected AvailabilityManagerInterface $availabilityManager,
     protected CurrencyFormatterInterface $currencyFormatter,
+    protected CourtBookingSportSettings $sportSettings,
   ) {}
 
   /**
@@ -32,6 +34,7 @@ class BookingPageController extends ControllerBase {
     return new static(
       $container->get('commerce_bat.availability_manager'),
       $container->get('commerce_price.currency_formatter'),
+      $container->get('court_booking.sport_settings'),
     );
   }
 
@@ -41,32 +44,12 @@ class BookingPageController extends ControllerBase {
   public function content(): array {
     $config = $this->config('court_booking.settings');
     $mappings = $config->get('sport_mappings') ?: [];
-    $days_ahead = (int) ($config->get('days_ahead') ?: 60);
-    $excluded = $config->get('excluded_weekdays') ?: [];
     $commerce_bat = $this->config('commerce_bat.settings');
     $slot_minutes = (int) ($commerce_bat->get('lesson_slot_length_minutes') ?: 60);
     $site_tz = $this->displayTimeZoneId();
-    $booking_day_start = $config->get('booking_day_start') ?: '06:00';
-    $booking_day_end = $config->get('booking_day_end') ?: '23:00';
-    $max_booking_hours = max(1, min(24, (int) ($config->get('max_booking_hours') ?: 4)));
-    $buffer_minutes = max(0, min(180, (int) ($config->get('buffer_minutes') ?? 0)));
-    $same_day_cutoff_hm = trim((string) ($config->get('same_day_cutoff_hm') ?? ''));
-    $blackout_dates = array_values(array_unique(array_filter(array_map('strval', (array) ($config->get('blackout_dates') ?? [])))));
-    $resource_closures = (array) ($config->get('resource_closures') ?? []);
-    $resource_closures_by_variation = [];
-    foreach ($resource_closures as $row) {
-      $vid = (int) ($row['variation_id'] ?? 0);
-      $start_date = trim((string) ($row['start_date'] ?? ''));
-      $end_date = trim((string) ($row['end_date'] ?? ''));
-      if ($vid <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date) || $end_date < $start_date) {
-        continue;
-      }
-      $resource_closures_by_variation[(string) $vid][] = [
-        'startDate' => $start_date,
-        'endDate' => $end_date,
-        'reason' => trim((string) ($row['reason'] ?? '')),
-      ];
-    }
+    $request = \Drupal::request();
+    $initial_sport = $request->query->get('sport');
+    $initial_sport_str = $initial_sport !== NULL && $initial_sport !== '' ? (string) $initial_sport : '';
 
     $term_storage = $this->entityTypeManager()->getStorage('taxonomy_term');
     $variation_storage = $this->entityTypeManager()->getStorage('commerce_product_variation');
@@ -137,10 +120,12 @@ class BookingPageController extends ControllerBase {
         ];
       }
       if ($variations_out) {
+        $merged = $this->sportSettings->getMergedForSport($tid);
         $sports[] = [
           'id' => (string) $tid,
           'label' => $label,
           'variations' => $variations_out,
+          'booking' => $this->sportSettings->bookingRulesForJs($merged, $site_tz),
         ];
       }
     }
@@ -149,38 +134,33 @@ class BookingPageController extends ControllerBase {
     // Must match \Drupal\Core\Access\CsrfRequestHeaderAccessCheck (route _csrf_request_header_token).
     $csrf_token = \Drupal::csrfToken()->get(CsrfRequestHeaderAccessCheck::TOKEN_KEY);
 
-    $dates_bootstrap = [];
-    try {
-      $tz = new \DateTimeZone($site_tz);
-      $excluded_w = array_map('intval', (array) $excluded);
-      $start = new \DateTimeImmutable('today', $tz);
-      for ($i = 0; $i < $days_ahead; $i++) {
-        $day_local = $start->modify('+' . $i . ' days');
-        $wday = (int) $day_local->format('w');
-        if (in_array($wday, $excluded_w, TRUE)) {
-          continue;
-        }
-        $day_start_utc = $day_local->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
-        $day_end_utc = $day_local->modify('+1 day')->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
-        $dates_bootstrap[] = [
-          'ymd' => $day_local->format('Y-m-d'),
-          'dayNum' => $day_local->format('j'),
-          'weekday' => $day_local->format('D'),
-          'from' => $day_start_utc->format('Y-m-d\TH:i:s\Z'),
-          'to' => $day_end_utc->format('Y-m-d\TH:i:s\Z'),
-        ];
-      }
-    }
-    catch (\Throwable $e) {
-      $dates_bootstrap = [];
-    }
-
     $settings_config = $this->config('court_booking.settings');
     $country_code = \Drupal\court_booking\CourtBookingRegional::defaultCountryCode(\Drupal::configFactory());
     $first_day = \Drupal\court_booking\CourtBookingRegional::firstDayOfWeek(\Drupal::configFactory());
-    $request = \Drupal::request();
-    $initial_sport = $request->query->get('sport');
     $initial_variation = $request->query->get('variation');
+
+    $default_tid = 0;
+    if ($sports !== []) {
+      $default_tid = (int) ($sports[0]['id'] ?? 0);
+      foreach ($sports as $sp) {
+        if ($initial_sport_str !== '' && (string) ($sp['id'] ?? '') === $initial_sport_str) {
+          $default_tid = (int) $sp['id'];
+          break;
+        }
+      }
+    }
+    $merged_root = $default_tid > 0
+      ? $this->sportSettings->getMergedForSport($default_tid)
+      : $this->sportSettings->getGlobalBookingRules();
+    $js_root = $this->sportSettings->bookingRulesForJs($merged_root, $site_tz);
+    $dates_bootstrap = $js_root['dates'];
+    $booking_day_start = $js_root['bookingDayStart'];
+    $booking_day_end = $js_root['bookingDayEnd'];
+    $max_booking_hours = $js_root['maxBookingHours'];
+    $buffer_minutes = $js_root['bufferMinutes'];
+    $same_day_cutoff_hm = $js_root['sameDayCutoffHm'];
+    $blackout_dates = $js_root['blackoutDates'];
+    $resource_closures_by_variation = $js_root['resourceClosuresByVariation'];
 
     return [
       '#theme' => 'court_booking_page',
@@ -206,7 +186,7 @@ class BookingPageController extends ControllerBase {
             'addUrl' => Url::fromRoute('court_booking.add')->toString(),
             'slotCandidatesUrl' => Url::fromRoute('court_booking.slot_candidates')->toString(),
             'csrfToken' => $csrf_token,
-            'initialSportId' => $initial_sport !== NULL && $initial_sport !== '' ? (string) $initial_sport : '',
+            'initialSportId' => $initial_sport_str,
             'initialVariationId' => $initial_variation !== NULL && $initial_variation !== '' ? (string) $initial_variation : '',
             'maxBookingHours' => $max_booking_hours,
           ],

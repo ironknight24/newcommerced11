@@ -10,6 +10,7 @@ use Drupal\Core\Access\CsrfRequestHeaderAccessCheck;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Session\AccountInterface;
+
 /**
  * Builds drupalSettings + cache metadata for the cart slot editor.
  */
@@ -25,6 +26,7 @@ final class CourtBookingCartPageSettings {
     CurrencyFormatterInterface $currency_formatter,
     FileUrlGeneratorInterface $file_url_generator,
     ConfigFactoryInterface $config_factory,
+    CourtBookingSportSettings $sport_settings,
   ): ?array {
     $carts = $cart_provider->getCarts($account);
     $variations_out = [];
@@ -57,6 +59,7 @@ final class CourtBookingCartPageSettings {
         $thumb = CourtBookingVariationThumbnail::data($purchased, $file_url_generator);
         $cache_tags = array_merge($cache_tags, $thumb['cache_tags'], $purchased->getCacheTags());
         $slot_len = max(1, (int) $availability_manager->getLessonSlotLength($purchased));
+        $merged = $sport_settings->getMergedForVariation($purchased);
         $variations_out[$vid] = [
           'id' => $vid,
           'title' => $purchased->getTitle(),
@@ -68,6 +71,7 @@ final class CourtBookingCartPageSettings {
           'detailUrl' => \Drupal\Core\Url::fromRoute('court_booking.court_detail', [
             'commerce_product_variation' => $vid,
           ])->setAbsolute()->toString(),
+          'booking' => $sport_settings->bookingRulesForJs($merged, CourtBookingRegional::effectiveTimeZoneId($config_factory, $account)),
         ];
       }
     }
@@ -78,59 +82,27 @@ final class CourtBookingCartPageSettings {
 
     $cb_config = $config_factory->get('court_booking.settings');
     $commerce_bat = $config_factory->get('commerce_bat.settings');
-    $days_ahead = (int) ($cb_config->get('days_ahead') ?: 60);
-    $excluded = $cb_config->get('excluded_weekdays') ?: [];
     $slot_minutes = (int) ($commerce_bat->get('lesson_slot_length_minutes') ?: 60);
     $site_tz = CourtBookingRegional::effectiveTimeZoneId($config_factory, $account);
-    $booking_day_start = $cb_config->get('booking_day_start') ?: '06:00';
-    $booking_day_end = $cb_config->get('booking_day_end') ?: '23:00';
-    $max_booking_hours = max(1, min(24, (int) ($cb_config->get('max_booking_hours') ?: 4)));
-    $buffer_minutes = max(0, min(180, (int) ($cb_config->get('buffer_minutes') ?? 0)));
-    $same_day_cutoff_hm = trim((string) ($cb_config->get('same_day_cutoff_hm') ?? ''));
-    $blackout_dates = array_values(array_unique(array_filter(array_map('strval', (array) ($cb_config->get('blackout_dates') ?? [])))));
-    $resource_closures = (array) ($cb_config->get('resource_closures') ?? []);
-    $resource_closures_by_variation = [];
-    foreach ($resource_closures as $row) {
-      $vid = (int) ($row['variation_id'] ?? 0);
-      $start_date = trim((string) ($row['start_date'] ?? ''));
-      $end_date = trim((string) ($row['end_date'] ?? ''));
-      if ($vid <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date) || $end_date < $start_date) {
-        continue;
-      }
-      $resource_closures_by_variation[(string) $vid][] = [
-        'startDate' => $start_date,
-        'endDate' => $end_date,
-        'reason' => trim((string) ($row['reason'] ?? '')),
-      ];
-    }
     $interval = 'PT' . max(1, $slot_minutes) . 'M';
     $csrf_token = \Drupal::csrfToken()->get(CsrfRequestHeaderAccessCheck::TOKEN_KEY);
 
-    $dates_bootstrap = [];
-    try {
-      $tz = new \DateTimeZone($site_tz);
-      $excluded_w = array_map('intval', (array) $excluded);
-      $start = new \DateTimeImmutable('today', $tz);
-      for ($i = 0; $i < $days_ahead; $i++) {
-        $day_local = $start->modify('+' . $i . ' days');
-        $wday = (int) $day_local->format('w');
-        if (in_array($wday, $excluded_w, TRUE)) {
-          continue;
+    $dates_by_ymd = [];
+    foreach ($variations_out as $row) {
+      $bdates = $row['booking']['dates'] ?? [];
+      if (!is_array($bdates)) {
+        continue;
+      }
+      foreach ($bdates as $d) {
+        if (!empty($d['ymd'])) {
+          $dates_by_ymd[(string) $d['ymd']] = $d;
         }
-        $day_start_utc = $day_local->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
-        $day_end_utc = $day_local->modify('+1 day')->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
-        $dates_bootstrap[] = [
-          'ymd' => $day_local->format('Y-m-d'),
-          'dayNum' => $day_local->format('j'),
-          'weekday' => $day_local->format('D'),
-          'from' => $day_start_utc->format('Y-m-d\TH:i:s\Z'),
-          'to' => $day_end_utc->format('Y-m-d\TH:i:s\Z'),
-        ];
       }
     }
-    catch (\Throwable $e) {
-      $dates_bootstrap = [];
-    }
+    ksort($dates_by_ymd);
+    $dates_bootstrap = array_values($dates_by_ymd);
+
+    $global_js = $sport_settings->bookingRulesForJs($sport_settings->getGlobalBookingRules(), $site_tz);
 
     $cache_tags = array_values(array_unique(array_merge(
       $cache_tags,
@@ -147,16 +119,16 @@ final class CourtBookingCartPageSettings {
       'timezone' => $site_tz,
       'countryCode' => CourtBookingRegional::defaultCountryCode($config_factory),
       'firstDayOfWeek' => CourtBookingRegional::firstDayOfWeek($config_factory),
-      'bookingDayStart' => $booking_day_start,
-      'bookingDayEnd' => $booking_day_end,
-      'bufferMinutes' => $buffer_minutes,
-      'sameDayCutoffHm' => $same_day_cutoff_hm,
-      'blackoutDates' => $blackout_dates,
-      'resourceClosuresByVariation' => $resource_closures_by_variation,
+      'bookingDayStart' => $global_js['bookingDayStart'],
+      'bookingDayEnd' => $global_js['bookingDayEnd'],
+      'bufferMinutes' => $global_js['bufferMinutes'],
+      'sameDayCutoffHm' => $global_js['sameDayCutoffHm'],
+      'blackoutDates' => $global_js['blackoutDates'],
+      'resourceClosuresByVariation' => $global_js['resourceClosuresByVariation'],
       'dates' => $dates_bootstrap,
       'csrfToken' => $csrf_token,
       'slotCandidatesUrl' => \Drupal\Core\Url::fromRoute('court_booking.slot_candidates')->toString(),
-      'maxBookingHours' => $max_booking_hours,
+      'maxBookingHours' => $global_js['maxBookingHours'],
     ];
 
     return [

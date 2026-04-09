@@ -12,6 +12,7 @@ use Drupal\Core\Field\FormatterBase;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Template\Attribute;
 use Drupal\court_booking\CourtBookingRegional;
+use Drupal\court_booking\CourtBookingSportSettings;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -38,6 +39,7 @@ final class CourtBookingCartRentalSlotFormatter extends FormatterBase implements
     array $third_party_settings,
     protected DateFormatterInterface $dateFormatter,
     protected AvailabilityManagerInterface $availabilityManager,
+    protected CourtBookingSportSettings $sportSettings,
   ) {
     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $label, $view_mode, $third_party_settings);
   }
@@ -56,6 +58,7 @@ final class CourtBookingCartRentalSlotFormatter extends FormatterBase implements
       $configuration['third_party_settings'],
       $container->get('date.formatter'),
       $container->get('commerce_bat.availability_manager'),
+      $container->get('court_booking.sport_settings'),
     );
   }
 
@@ -118,7 +121,8 @@ final class CourtBookingCartRentalSlotFormatter extends FormatterBase implements
       $date_label = $this->dateFormatter->format($start_ts, 'custom', 'D, d M Y', $tz);
       $time_from = $this->dateFormatter->format($start_ts, 'custom', 'g:i A', $tz);
       $time_to = $this->dateFormatter->format($end_ts, 'custom', 'g:i A', $tz);
-      $buffer_minutes = max(0, min(180, (int) (\Drupal::configFactory()->get('court_booking.settings')->get('buffer_minutes') ?? 0)));
+      $merged = $this->sportSettings->getMergedForVariation($purchased);
+      $buffer_minutes = max(0, min(180, (int) ($merged['buffer_minutes'] ?? 0)));
       $buffer_note = '';
       if ($buffer_minutes > 0) {
         $buffer_note = (string) $this->t('Price is for play time only; the time range includes @n minutes of buffer.', [
@@ -140,6 +144,9 @@ final class CourtBookingCartRentalSlotFormatter extends FormatterBase implements
       }
 
       $build = [
+        '#cache' => [
+          'tags' => ['config:court_booking.settings'],
+        ],
         '#type' => 'container',
         '#attributes' => ['class' => ['cb-cart-slot']],
         'date_row' => [

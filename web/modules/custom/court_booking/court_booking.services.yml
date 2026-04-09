@@ -33,11 +33,16 @@ services:
       - '@date.formatter'
       - '@file_url_generator'
 
+  court_booking.sport_settings:
+    class: Drupal\court_booking\CourtBookingSportSettings
+    arguments: ['@config.factory']
+
   court_booking.slot_booking:
     class: Drupal\court_booking\CourtBookingSlotBooking
     arguments:
       - '@commerce_bat.availability_manager'
       - '@config.factory'
+      - '@court_booking.sport_settings'
 
   court_booking.access.cart_slot_order_item:
     class: Drupal\court_booking\Access\CartSlotOrderItemAccessCheck

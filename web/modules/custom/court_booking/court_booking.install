@@ -201,3 +201,38 @@ function court_booking_update_9011(): void {
     $config->set('resource_closures', [])->save();
   }
 }
+
+/**
+ * Add per-sport booking overrides (empty = all sports use defaults).
+ */
+function court_booking_update_9012(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  if ($config->get('sport_booking_overrides') === NULL) {
+    $config->set('sport_booking_overrides', [])->save();
+  }
+}
+
+/**
+ * Remove excluded_weekdays (feature dropped; use blackouts/BAT for closures).
+ */
+function court_booking_update_9013(): void {
+  $config = \Drupal::configFactory()->getEditable('court_booking.settings');
+  $config->clear('excluded_weekdays');
+  $overrides = $config->get('sport_booking_overrides');
+  if (is_array($overrides)) {
+    $changed = FALSE;
+    foreach ($overrides as $tid => $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+      if (array_key_exists('excluded_weekdays', $row)) {
+        unset($overrides[$tid]['excluded_weekdays']);
+        $changed = TRUE;
+      }
+    }
+    if ($changed) {
+      $config->set('sport_booking_overrides', $overrides);
+    }
+  }
+  $config->save();
+}

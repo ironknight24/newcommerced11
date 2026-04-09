@@ -24,6 +24,12 @@ Grant **access court booking page** and **use court booking add** to roles that 
 
 - Add-to-cart forms for **lesson** BAT variations hide `field_cbat_rental_date` and link users to the booking page; products with mapped variations get a **Book a court** CTA.
 
+## Commerce BAT profile vs Court booking settings
+
+- **BAT availability profile** (on each variation, e.g. `field_cbat_schedule`): lesson slot length, weekly hours, allowed start times, and profile block lists. Commerce BAT uses this for availability JSON and `isAvailable()` checks.
+- **`court_booking.settings`**: site-wide defaults for the **amenities** and **cart** UIs and for server validation—date strip length (`days_ahead`), local booking window (`booking_day_start` / `booking_day_end`), `max_booking_hours`, `buffer_minutes`, `same_day_cutoff_hm`, `blackout_dates`, `resource_closures`, plus `sport_mappings` and `order_type_id`.
+- **Per-sport overrides**: optional rows under **Court booking** settings (vertical tabs per mapped sport) store `sport_booking_overrides` keyed by sport term ID. When enabled for a sport, those fields replace the global defaults for that sport’s variations on the booking page, cart slot editor, and validation.
+
 ## Buffer time and Commerce BAT grid
 
 When **buffer minutes** is greater than zero:

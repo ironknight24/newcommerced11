@@ -466,20 +466,29 @@
         const elCalGrid = root.querySelector('#cb-cal-grid');
         const elCalApply = root.querySelector('#cb-cal-apply');
 
-        const dates = Array.isArray(s.dates) ? s.dates : [];
-        const blackoutYmd = new Set(Array.isArray(s.blackoutDates) ? s.blackoutDates.map((d) => String(d)) : []);
-        const resourceClosuresByVariation =
+        let dates = Array.isArray(s.dates) ? s.dates.map((d) => ({ ...d })) : [];
+        let blackoutYmd = new Set(Array.isArray(s.blackoutDates) ? s.blackoutDates.map((d) => String(d)) : []);
+        let resourceClosuresByVariation =
           s.resourceClosuresByVariation && typeof s.resourceClosuresByVariation === 'object'
             ? s.resourceClosuresByVariation
             : {};
         const siteTimeZoneId = normalizeDrupalTimeZoneId(s.timezone) || 'UTC';
         const slotMinutesDefault = Math.max(1, parseInt(String(s.slotMinutes || 60), 10));
-        const bufferMinutes = Math.max(0, parseInt(String(s.bufferMinutes || 0), 10));
-        const sameDayCutoffMins = parseHmMinutes(s.sameDayCutoffHm);
-        const maxBookingHours = Math.max(1, Math.min(24, parseInt(String(s.maxBookingHours || 4), 10)));
+        let bufferMinutes = Math.max(0, parseInt(String(s.bufferMinutes || 0), 10));
+        let sameDayCutoffMins = parseHmMinutes(s.sameDayCutoffHm);
+        let sameDayCutoffHmDisplay = String(s.sameDayCutoffHm || '');
+        let maxBookingHours = Math.max(1, Math.min(24, parseInt(String(s.maxBookingHours || 4), 10)));
+        let bookingDayStart = String(s.bookingDayStart || '06:00');
+        let bookingDayEnd = String(s.bookingDayEnd || '23:00');
         const firstDayOfWeek = Math.max(0, Math.min(6, parseInt(String(s.firstDayOfWeek ?? 0), 10)));
 
-        const bookableYmd = new Set(dates.map((d) => d.ymd).filter((ymd) => !blackoutYmd.has(ymd)));
+        /** @type {Set<string>} */
+        let bookableYmd = new Set();
+
+        function rebuildBookableYmd() {
+          bookableYmd = new Set(dates.map((d) => d.ymd).filter((ymd) => !blackoutYmd.has(ymd)));
+        }
+        rebuildBookableYmd();
 
         /** @type {string|null} */
         let sportId = null;
@@ -612,6 +621,12 @@
                 b.setAttribute('aria-pressed', on ? 'true' : 'false');
                 b.className = pillClasses(on, false);
               });
+              applySportBookingRules();
+              durationHours = 1;
+              if (elDuration) {
+                elDuration.value = '1';
+              }
+              populateDurationSelect();
               elTimes.innerHTML = '';
               elCourts.innerHTML = '';
               setStatus('');
@@ -641,6 +656,11 @@
               b.setAttribute('aria-pressed', on ? 'true' : 'false');
               b.className = pillClasses(on, false);
             });
+            applySportBookingRules();
+            populateDurationSelect();
+          }
+          else {
+            populateDurationSelect();
           }
         }
 
@@ -731,6 +751,28 @@
           return s.sports.find((sp) => String(sp.id) === sid);
         }
 
+        function applySportBookingRules() {
+          const sp = currentSport();
+          const b = sp && sp.booking ? sp.booking : null;
+          if (!b) {
+            rebuildBookableYmd();
+            return;
+          }
+          dates = Array.isArray(b.dates) ? b.dates.map((x) => ({ ...x })) : [];
+          blackoutYmd = new Set(Array.isArray(b.blackoutDates) ? b.blackoutDates.map((d) => String(d)) : []);
+          resourceClosuresByVariation =
+            b.resourceClosuresByVariation && typeof b.resourceClosuresByVariation === 'object'
+              ? b.resourceClosuresByVariation
+              : {};
+          bufferMinutes = Math.max(0, parseInt(String(b.bufferMinutes ?? 0), 10));
+          sameDayCutoffMins = parseHmMinutes(b.sameDayCutoffHm || '');
+          sameDayCutoffHmDisplay = String(b.sameDayCutoffHm || '');
+          maxBookingHours = Math.max(1, Math.min(24, parseInt(String(b.maxBookingHours || 4), 10)));
+          bookingDayStart = String(b.bookingDayStart || '06:00');
+          bookingDayEnd = String(b.bookingDayEnd || '23:00');
+          rebuildBookableYmd();
+        }
+
         /**
          * Calendar path: start ISO of each BAT segment in the booking block (multi-tile highlight).
          * Buffer-candidate path: one tile per full block only.
@@ -747,8 +789,8 @@
           if (!sport || !calendars) {
             return new Set([startIso]);
           }
-          const openM = parseHmMinutes(s.bookingDayStart);
-          const closeM = parseHmMinutes(s.bookingDayEnd);
+          const openM = parseHmMinutes(bookingDayStart);
+          const closeM = parseHmMinutes(bookingDayEnd);
           const hasWindow = openM !== null && closeM !== null && closeM > openM;
           const tz = siteTimeZoneId;
           for (const v of sport.variations) {
@@ -943,7 +985,7 @@
             if (sameDayClosed) {
               const p = document.createElement('p');
               p.className = 'text-sm text-slate-500';
-              p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
+              p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': sameDayCutoffHmDisplay });
               elTimes.appendChild(p);
               refreshPitchSection();
               return;
@@ -1027,8 +1069,8 @@
             });
           });
           const times = Array.from(byStart.keys()).sort();
-          const openM = parseHmMinutes(s.bookingDayStart);
-          const closeM = parseHmMinutes(s.bookingDayEnd);
+          const openM = parseHmMinutes(bookingDayStart);
+          const closeM = parseHmMinutes(bookingDayEnd);
           const hasWindow = openM !== null && closeM !== null && closeM > openM;
 
           const sport = currentSport();
@@ -1109,7 +1151,7 @@
           if (sameDayClosed) {
             const p = document.createElement('p');
             p.className = 'text-sm text-slate-500';
-            p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': String(s.sameDayCutoffHm) });
+            p.textContent = Drupal.t('Same-day booking is closed after @time.', { '@time': sameDayCutoffHmDisplay });
             elTimes.appendChild(p);
             refreshPitchSection();
             return;
@@ -1406,8 +1448,8 @@
           if (!calendars) {
             return;
           }
-          const openM = parseHmMinutes(s.bookingDayStart);
-          const closeM = parseHmMinutes(s.bookingDayEnd);
+          const openM = parseHmMinutes(bookingDayStart);
+          const closeM = parseHmMinutes(bookingDayEnd);
           const hasWindow = openM !== null && closeM !== null && closeM > openM;
           const blocks = [];
           sport.variations.forEach((v) => {
@@ -1789,7 +1831,6 @@
           });
         }
 
-        populateDurationSelect();
         renderSports();
         if (dates.length) {
           durationHours = 1;
