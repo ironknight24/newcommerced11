@@ -232,6 +232,9 @@ class SettingsForm extends ConfigFormBase {
         '#title' => $this->t('Sport: @label (ID @tid)', ['@label' => $label, '@tid' => $tid]),
         '#description' => $this->t('Leave “Use custom booking rules” unchecked to use the default tab for this sport. Enable it only when this sport needs different days ahead, hours, buffer, blackouts, or closures than everyone else.'),
         '#group' => 'sport_tabs',
+        // Mirror booking_defaults: keep sport_override[tid][...] structured in
+        // FormState so validate/submit receive nested hours, buffer, etc.
+        '#tree' => TRUE,
       ];
       $d = 'sport_booking_' . $tid;
       $p = ['sport_override', $tid];
