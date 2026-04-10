@@ -108,44 +108,94 @@
     }).format(new Date(utcNoon));
   }
 
-  function slotCountForVariation(v, slotMinutesDefault, durationHours) {
+  function gcdPlayGrid(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+      const t = y;
+      y = x % y;
+      x = t;
+    }
+    return Math.max(1, x);
+  }
+
+  function lcmPlayGrid(a, b) {
+    if (a <= 0 || b <= 0) {
+      return Math.max(a, b, 1);
+    }
+    return (a / gcdPlayGrid(a, b)) * b;
+  }
+
+  function lcmManyPlayGrid(arr) {
+    const vals = [...new Set(arr.filter((n) => n > 0))];
+    if (!vals.length) {
+      return 60;
+    }
+    let l = vals[0];
+    for (let i = 1; i < vals.length; i++) {
+      l = lcmPlayGrid(l, vals[i]);
+    }
+    return Math.max(1, l);
+  }
+
+  function formatPlayDurationLabel(minutes) {
+    const m = Math.max(1, Math.round(Number(minutes) || 0));
+    if (m < 60) {
+      return Drupal.formatPlural(m, '1 minute', '@count minutes');
+    }
+    if (m % 60 === 0) {
+      const h = m / 60;
+      return Drupal.formatPlural(h, '1 hour', '@count hours');
+    }
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return Drupal.t('@h h @m min', { '@h': String(h), '@m': String(rem) });
+  }
+
+  function slotCountForVariation(v, slotMinutesDefault, playMinutes) {
     const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-    const totalMin = durationHours * 60;
+    const totalMin = Math.max(0, Number(playMinutes) || 0);
     if (totalMin % slotLen !== 0) {
       return null;
     }
     return totalMin / slotLen;
   }
 
-  function blockSlotCountForVariation(v, slotMinutesDefault, durationHours, bufferMinutes) {
+  function blockSlotCountForVariation(v, slotMinutesDefault, playMinutes, bufferMinutes) {
     if (!bufferMinutes || bufferMinutes <= 0) {
       return null;
     }
     const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-    const playMin = durationHours * 60;
+    const playMin = Math.max(0, Number(playMinutes) || 0);
     return Math.ceil((playMin + bufferMinutes) / slotLen);
   }
 
-  function matchesStaggeredStart(startIso, timeZone, openM, bufferMinutes, durationHours, slotLen) {
-    if (!bufferMinutes || bufferMinutes <= 0 || openM === null) {
-      return true;
-    }
-    const sl = Math.max(1, slotLen);
-    const playMin = durationHours * 60;
-    const step = Math.ceil((playMin + bufferMinutes) / sl) * sl;
+  function matchesStaggeredStart(startIso, timeZone, openM, hasWindow, bufferMinutes, playMinutes) {
     const startM = minutesSinceMidnightInZone(startIso, timeZone);
-    if (startM < openM) {
+    const playMin = Math.max(1, Number(playMinutes) || 60);
+    if (bufferMinutes > 0) {
+      if (openM === null) {
+        return true;
+      }
+      const step = playMin + bufferMinutes;
+      if (startM < openM) {
+        return false;
+      }
+      return (startM - openM) % step === 0;
+    }
+    const anchor = hasWindow && openM !== null ? openM : 0;
+    if (hasWindow && openM !== null && startM < openM) {
       return false;
     }
-    return (startM - openM) % step === 0;
+    return (startM - anchor) % playMin === 0;
   }
 
-  function playBufferEndIso(startIso, durationHours, bufferMinutes) {
+  function playBufferEndIso(startIso, playMinutes, bufferMinutes) {
     const ms = new Date(startIso).getTime();
     if (Number.isNaN(ms)) {
       return '';
     }
-    const addMin = durationHours * 60 + Math.max(0, bufferMinutes);
+    const addMin = Math.max(0, Number(playMinutes) || 0) + Math.max(0, bufferMinutes);
     return new Date(ms + addMin * 60000).toISOString();
   }
 
@@ -257,6 +307,7 @@
       once('court-booking-cart-slot', 'body', context).forEach(() => {
         const siteTimeZoneId = normalizeDrupalTimeZoneId(s.timezone) || 'UTC';
         const slotMinutesDefault = Math.max(1, parseInt(String(s.slotMinutes || 60), 10));
+        const durationGridMinutesCart = Math.max(1, parseInt(String(s.durationGridMinutes || slotMinutesDefault), 10));
         let bufferMinutes = Math.max(0, parseInt(String(s.bufferMinutes || 0), 10));
         let sameDayCutoffMins = parseHmMinutes(s.sameDayCutoffHm);
         let sameDayCutoffHmDisplay = String(s.sameDayCutoffHm || '');
@@ -298,6 +349,9 @@
             bookingDayStart = String(s.bookingDayStart || '06:00');
             bookingDayEnd = String(s.bookingDayEnd || '23:00');
             rebuildBookableYmd();
+            if (modalRoot) {
+              populateDurationSelect();
+            }
             return;
           }
           dates = Array.isArray(b.dates) ? b.dates.map((x) => ({ ...x })) : [];
@@ -313,6 +367,9 @@
           bookingDayStart = String(b.bookingDayStart || '06:00');
           bookingDayEnd = String(b.bookingDayEnd || '23:00');
           rebuildBookableYmd();
+          if (modalRoot) {
+            populateDurationSelect();
+          }
         }
 
         applyVariationBookingRules(null);
@@ -330,7 +387,7 @@
           /** @type {Array<{start: string, end: string, variationIds: number[]}>|null} */
           bufferSlotCandidates: null,
           visibleYm: '',
-          durationHours: 1,
+          playMinutes: durationGridMinutesCart,
         };
 
         function ensureModal() {
@@ -377,7 +434,7 @@
           modalRoot.querySelector('[data-cb-strip-prev]').addEventListener('click', () => shiftMonth(-1));
           modalRoot.querySelector('[data-cb-strip-next]').addEventListener('click', () => shiftMonth(1));
           modalRoot.querySelector('[data-cb-cart-duration]').addEventListener('change', () => {
-            ctx.durationHours = Math.max(1, parseInt(modalRoot.querySelector('[data-cb-cart-duration]').value, 10) || 1);
+            ctx.playMinutes = Math.max(1, parseInt(modalRoot.querySelector('[data-cb-cart-duration]').value, 10) || 60);
             ctx.selectedStartIso = null;
             ctx.selectedBlock = null;
             if (bufferMinutes > 0 && s.slotCandidatesUrl) {
@@ -573,7 +630,7 @@
             },
             body: JSON.stringify({
               ymd,
-              duration_hours: ctx.durationHours,
+              duration_minutes: ctx.playMinutes,
               variation_ids: [variationId],
               quantity: 1,
             }),
@@ -757,7 +814,7 @@
           const openM = parseHmMinutes(bookingDayStart);
           const closeM = parseHmMinutes(bookingDayEnd);
           const hasWindow = openM !== null && closeM !== null && closeM > openM;
-          const n = slotCountForVariation(v, slotMinutesDefault, ctx.durationHours);
+          const n = slotCountForVariation(v, slotMinutesDefault, ctx.playMinutes);
           const nowMins = minutesNowInZoneForYmd(ctx.selectedYmd, tz);
           const sameDayClosed = sameDayCutoffMins !== null && nowMins >= 0 && nowMins > sameDayCutoffMins;
           const isToday = ctx.selectedYmd === todayYmd(tz);
@@ -788,20 +845,19 @@
             }
             const requiredN =
               bufferMinutes > 0
-                ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.durationHours, bufferMinutes)
+                ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.playMinutes, bufferMinutes)
                 : n;
             if (!requiredN) {
               return false;
             }
-            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-            if (!matchesStaggeredStart(startIso, tz, openM, bufferMinutes, ctx.durationHours, slotLen)) {
+            if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, ctx.playMinutes)) {
               return false;
             }
             const availabilityBlock = consecutiveBlock(cal, startIso, requiredN);
             if (!availabilityBlock) {
               return false;
             }
-            const rentalEnd = playBufferEndIso(startIso, ctx.durationHours, bufferMinutes);
+            const rentalEnd = playBufferEndIso(startIso, ctx.playMinutes, bufferMinutes);
             if (!rentalEnd || !slotFitsBookingWindow(startIso, rentalEnd, tz, hasWindow, openM, closeM)) {
               return false;
             }
@@ -833,7 +889,7 @@
           timesOk.forEach((startIso) => {
             const row = byStart.get(startIso) || [];
             const hasSelectable = row.some(({ entry }) => isEntrySelectable(entry));
-            const rentalEnd = playBufferEndIso(startIso, ctx.durationHours, bufferMinutes);
+            const rentalEnd = playBufferEndIso(startIso, ctx.playMinutes, bufferMinutes);
 
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -858,14 +914,14 @@
             btn.addEventListener('click', () => {
               ctx.selectedStartIso = startIso;
 
-              const slotN = slotCountForVariation(v, slotMinutesDefault, ctx.durationHours);
+              const slotN = slotCountForVariation(v, slotMinutesDefault, ctx.playMinutes);
               const requiredN =
                 bufferMinutes > 0
-                  ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.durationHours, bufferMinutes)
+                  ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.playMinutes, bufferMinutes)
                   : slotN;
 
               const gridOk = requiredN && consecutiveBlock(cal, startIso, requiredN);
-              const rentEnd = playBufferEndIso(startIso, ctx.durationHours, bufferMinutes);
+              const rentEnd = playBufferEndIso(startIso, ctx.playMinutes, bufferMinutes);
 
               ctx.selectedBlock = gridOk && rentEnd ? { start: startIso, end: rentEnd } : null;
 
@@ -938,6 +994,24 @@
             return;
           }
           applyVariationBookingRules(v);
+          const capMinutes = Math.max(1, Math.min(24, maxBookingHours)) * 60;
+          const snapPlayToGrid = (playMin) => {
+            const grid = durationGridMinutesCart;
+            if (playMin <= 0) {
+              return grid;
+            }
+            let m = Math.round(playMin / grid) * grid;
+            if (m < grid) {
+              m = grid;
+            }
+            if (m > capMinutes) {
+              m = Math.floor(capMinutes / grid) * grid;
+            }
+            if (m < grid) {
+              m = grid;
+            }
+            return m;
+          };
           ctx = {
             orderItemId,
             variation: v,
@@ -948,7 +1022,7 @@
             calendars: null,
             bufferSlotCandidates: null,
             visibleYm: '',
-            durationHours: 1,
+            playMinutes: durationGridMinutesCart,
           };
           const startAttr = t.getAttribute('data-cb-slot-start');
           const endAttr = t.getAttribute('data-cb-slot-end');
@@ -958,12 +1032,7 @@
             if (endMs > startMs) {
               const totalMin = Math.round((endMs - startMs) / 60000);
               const playMin = Math.max(0, totalMin - bufferMinutes);
-              if (playMin > 0 && playMin % 60 === 0) {
-                ctx.durationHours = Math.max(1, Math.min(maxBookingHours, playMin / 60));
-              } else {
-                const hours = Math.round((endMs - startMs) / 3600000);
-                ctx.durationHours = Math.max(1, Math.min(maxBookingHours, hours || 1));
-              }
+              ctx.playMinutes = snapPlayToGrid(playMin);
             }
             ctx.selectedYmd = ymdInZone(startAttr, siteTimeZoneId);
             if (isDaySelectableForCurrentVariation(ctx.selectedYmd)) {
@@ -985,7 +1054,6 @@
 
           ensureModal();
           populateDurationSelect();
-          modalRoot.querySelector('[data-cb-cart-duration]').value = String(ctx.durationHours);
           renderDateStrip();
           if (ctx.selectedDay) {
             loadDayData().then(() => {
@@ -1003,10 +1071,10 @@
                   }
                 } else if (ctx.calendars) {
                   const cal = ctx.calendars[String(v.id)];
-                  const n = slotCountForVariation(v, slotMinutesDefault, ctx.durationHours);
+                  const n = slotCountForVariation(v, slotMinutesDefault, ctx.playMinutes);
                   const requiredN =
                     bufferMinutes > 0
-                      ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.durationHours, bufferMinutes)
+                      ? blockSlotCountForVariation(v, slotMinutesDefault, ctx.playMinutes, bufferMinutes)
                       : n;
                   if (
                     cal &&
@@ -1014,7 +1082,7 @@
                     isEntrySelectable(calendarEntries(cal).find((e) => e.start === startAttr))
                   ) {
                     const block = consecutiveBlock(cal, startAttr, requiredN);
-                    const rentEnd = playBufferEndIso(startAttr, ctx.durationHours, bufferMinutes);
+                    const rentEnd = playBufferEndIso(startAttr, ctx.playMinutes, bufferMinutes);
                     if (
                       block &&
                       rentEnd &&

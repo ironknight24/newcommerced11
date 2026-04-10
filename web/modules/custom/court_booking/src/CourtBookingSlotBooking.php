@@ -164,15 +164,18 @@ final class CourtBookingSlotBooking {
   }
 
   /**
-   * Staggered starts (play + buffer cadence) for a day when buffer &gt; 0; validates each window.
+   * Buffer-mode slot candidates: starts every (play + buffer) minutes from opening until close.
    *
    * @param int[] $variation_ids
+   * @param int $play_minutes
+   *   Billable play length in minutes (must align to each variation’s lesson slot length).
+   *
    * @return list<array{start: string, end: string, variationIds: int[]}>
    */
   public function buildBufferSlotCandidatesForDay(
     array $variation_ids,
     string $ymd,
-    int $duration_hours,
+    int $play_minutes,
     int $quantity,
     AccountInterface $account,
   ): array {
@@ -186,8 +189,22 @@ final class CourtBookingSlotBooking {
       return [];
     }
     $max_hours = max(1, min(24, (int) ($rules['max_booking_hours'] ?? 4)));
-    $duration_hours = max(1, min($max_hours, $duration_hours));
-    $play_minutes = $duration_hours * 60;
+    $max_play_cap = $max_hours * 60;
+    $play_minutes = max(1, min($max_play_cap, $play_minutes));
+    $slot_lens = [];
+    foreach ($variation_ids as $vid) {
+      $vid = (int) $vid;
+      if ($vid <= 0) {
+        continue;
+      }
+      $v = \Drupal\commerce_product\Entity\ProductVariation::load($vid);
+      if ($v instanceof ProductVariationInterface) {
+        $slot_lens[] = max(1, (int) $this->availabilityManager->getLessonSlotLength($v));
+      }
+    }
+    if ($slot_lens === [] || !CourtBookingPlayDurationGrid::playMinutesValidForSlots($play_minutes, $slot_lens)) {
+      return [];
+    }
     $open_hm = (string) ($rules['booking_day_start'] ?: '06:00');
     $close_hm = (string) ($rules['booking_day_end'] ?: '23:00');
     $open_m = $this->parseHmToMinutes($open_hm);
@@ -205,14 +222,15 @@ final class CourtBookingSlotBooking {
       $close_m = 24 * 60;
     }
 
-    $step = $play_minutes + $buffer_minutes;
+    $block = $play_minutes + $buffer_minutes;
+    $step = $block;
     $slots_out = [];
     $variation_ids = array_values(array_unique(array_filter(array_map('intval', $variation_ids))));
 
-    for ($t = $open_m; $t + $play_minutes + $buffer_minutes <= $close_m; $t += $step) {
+    for ($t = $open_m; $t + $block <= $close_m; $t += $step) {
       $local_start = new \DateTimeImmutable($ymd . sprintf(' %02d:%02d:00', intdiv($t, 60), $t % 60), $tz);
       $start_utc = DateTimeHelper::normalizeUtc($local_start->setTimezone(new \DateTimeZone('UTC')));
-      $end_utc = $start_utc->add(new \DateInterval('PT' . ($play_minutes + $buffer_minutes) . 'M'));
+      $end_utc = $start_utc->add(new \DateInterval('PT' . $block . 'M'));
       $start_raw = DateTimeHelper::formatUtc($start_utc);
       $end_raw = DateTimeHelper::formatUtc($end_utc);
 

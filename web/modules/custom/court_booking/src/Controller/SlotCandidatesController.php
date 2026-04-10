@@ -2,7 +2,9 @@
 
 namespace Drupal\court_booking\Controller;
 
+use Drupal\commerce_bat\Availability\AvailabilityManagerInterface;
 use Drupal\commerce_product\Entity\ProductVariation;
+use Drupal\court_booking\CourtBookingPlayDurationGrid;
 use Drupal\court_booking\CourtBookingSlotBooking;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -17,6 +19,7 @@ final class SlotCandidatesController extends ControllerBase {
 
   public function __construct(
     protected CourtBookingSlotBooking $slotBooking,
+    protected AvailabilityManagerInterface $availabilityManager,
   ) {}
 
   /**
@@ -25,11 +28,12 @@ final class SlotCandidatesController extends ControllerBase {
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('court_booking.slot_booking'),
+      $container->get('commerce_bat.availability_manager'),
     );
   }
 
   /**
-   * POST JSON body: ymd, duration_hours, variation_ids[], optional quantity.
+   * POST JSON body: ymd, duration_minutes (preferred) or duration_hours, variation_ids[], quantity.
    */
   public function candidates(Request $request): JsonResponse {
     $raw = $request->getContent();
@@ -38,7 +42,11 @@ final class SlotCandidatesController extends ControllerBase {
       throw new BadRequestHttpException('Invalid JSON body.');
     }
     $ymd = trim((string) ($data['ymd'] ?? ''));
-    $duration_hours = max(1, min(24, (int) ($data['duration_hours'] ?? 1)));
+    $play_minutes = (int) ($data['duration_minutes'] ?? 0);
+    if ($play_minutes <= 0) {
+      $play_minutes = max(1, min(24, (int) ($data['duration_hours'] ?? 1))) * 60;
+    }
+    $play_minutes = max(1, min(24 * 60, $play_minutes));
     $variation_raw = $data['variation_ids'] ?? [];
     if (!is_array($variation_raw)) {
       throw new BadRequestHttpException('variation_ids must be an array.');
@@ -71,8 +79,19 @@ final class SlotCandidatesController extends ControllerBase {
       }
     }
 
+    if ($filtered_ids) {
+      $slot_lens = [];
+      foreach ($filtered_ids as $vid) {
+        $v = $variations[$vid];
+        $slot_lens[] = max(1, (int) $this->availabilityManager->getLessonSlotLength($v));
+      }
+      if (!CourtBookingPlayDurationGrid::playMinutesValidForSlots($play_minutes, $slot_lens)) {
+        return new JsonResponse(['message' => (string) $this->t('Invalid play duration for these courts.')], 400);
+      }
+    }
+
     $slots = $filtered_ids
-      ? $this->slotBooking->buildBufferSlotCandidatesForDay($filtered_ids, $ymd, $duration_hours, $quantity, $this->currentUser())
+      ? $this->slotBooking->buildBufferSlotCandidatesForDay($filtered_ids, $ymd, $play_minutes, $quantity, $this->currentUser())
       : [];
 
     return new JsonResponse(['slots' => $slots]);

@@ -183,15 +183,66 @@
     return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(utcNoon));
   }
 
+  function gcdPlayGrid(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+      const t = y;
+      y = x % y;
+      x = t;
+    }
+    return Math.max(1, x);
+  }
+
+  function lcmPlayGrid(a, b) {
+    if (a <= 0 || b <= 0) {
+      return Math.max(a, b, 1);
+    }
+    return (a / gcdPlayGrid(a, b)) * b;
+  }
+
+  /**
+   * @param {number[]} arr
+   */
+  function lcmManyPlayGrid(arr) {
+    const vals = [...new Set(arr.filter((n) => n > 0))];
+    if (!vals.length) {
+      return 60;
+    }
+    let l = vals[0];
+    for (let i = 1; i < vals.length; i++) {
+      l = lcmPlayGrid(l, vals[i]);
+    }
+    return Math.max(1, l);
+  }
+
+  /**
+   * @param {number} minutes
+   * @returns {string}
+   */
+  function formatPlayDurationLabel(minutes) {
+    const m = Math.max(1, Math.round(Number(minutes) || 0));
+    if (m < 60) {
+      return Drupal.formatPlural(m, '1 minute', '@count minutes');
+    }
+    if (m % 60 === 0) {
+      const h = m / 60;
+      return Drupal.formatPlural(h, '1 hour', '@count hours');
+    }
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return Drupal.t('@h h @m min', { '@h': String(h), '@m': String(rem) });
+  }
+
   /**
    * @param {object} v
    * @param {number} slotMinutesDefault
-   * @param {number} durationHours
+   * @param {number} playMinutes
    * @returns {number|null}
    */
-  function slotCountForVariation(v, slotMinutesDefault, durationHours) {
+  function slotCountForVariation(v, slotMinutesDefault, playMinutes) {
     const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-    const totalMin = durationHours * 60;
+    const totalMin = Math.max(0, Number(playMinutes) || 0);
     if (totalMin % slotLen !== 0) {
       return null;
     }
@@ -203,56 +254,65 @@
    *
    * @param {object} v
    * @param {number} slotMinutesDefault
-   * @param {number} durationHours
+   * @param {number} playMinutes
    * @param {number} bufferMinutes
    * @returns {number|null}
    */
-  function blockSlotCountForVariation(v, slotMinutesDefault, durationHours, bufferMinutes) {
+  function blockSlotCountForVariation(v, slotMinutesDefault, playMinutes, bufferMinutes) {
     if (!bufferMinutes || bufferMinutes <= 0) {
       return null;
     }
     const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-    const playMin = durationHours * 60;
+    const playMin = Math.max(0, Number(playMinutes) || 0);
     return Math.ceil((playMin + bufferMinutes) / slotLen);
   }
 
   /**
+   * Buffer &gt; 0: only starts on (play + buffer) cadence from opening.
+   * Buffer 0: only starts every playMinutes from anchor (opening if configured window, else midnight).
+   *
    * @param {string} startIso
    * @param {string} timeZone
    * @param {number|null} openM
+   * @param {boolean} hasWindow
    * @param {number} bufferMinutes
-   * @param {number} durationHours
-   * @param {number} slotLen
+   * @param {number} playMinutes
    * @returns {boolean}
    */
-  function matchesStaggeredStart(startIso, timeZone, openM, bufferMinutes, durationHours, slotLen) {
-    if (!bufferMinutes || bufferMinutes <= 0 || openM === null) {
-      return true;
-    }
-    const sl = Math.max(1, slotLen);
-    const playMin = durationHours * 60;
-    const step = Math.ceil((playMin + bufferMinutes) / sl) * sl;
+  function matchesStaggeredStart(startIso, timeZone, openM, hasWindow, bufferMinutes, playMinutes) {
     const startM = minutesSinceMidnightInZone(startIso, timeZone);
-    if (startM < openM) {
+    const playMin = Math.max(1, Number(playMinutes) || 60);
+    if (bufferMinutes > 0) {
+      if (openM === null) {
+        return true;
+      }
+      const step = playMin + bufferMinutes;
+      if (startM < openM) {
+        return false;
+      }
+      return (startM - openM) % step === 0;
+    }
+    const anchor = hasWindow && openM !== null ? openM : 0;
+    if (hasWindow && openM !== null && startM < openM) {
       return false;
     }
-    return (startM - openM) % step === 0;
+    return (startM - anchor) % playMin === 0;
   }
 
   /**
    * Rental field / POST end: start + play + buffer (exact), not necessarily last BAT grid boundary.
    *
    * @param {string} startIso
-   * @param {number} durationHours
+   * @param {number} playMinutes
    * @param {number} bufferMinutes
    * @returns {string}
    */
-  function playBufferEndIso(startIso, durationHours, bufferMinutes) {
+  function playBufferEndIso(startIso, playMinutes, bufferMinutes) {
     const ms = new Date(startIso).getTime();
     if (Number.isNaN(ms)) {
       return '';
     }
-    const addMin = durationHours * 60 + Math.max(0, bufferMinutes);
+    const addMin = Math.max(0, Number(playMinutes) || 0) + Math.max(0, bufferMinutes);
     return new Date(ms + addMin * 60000).toISOString();
   }
 
@@ -401,14 +461,20 @@
    * @param {number} hours
    * @returns {string}
    */
-  function formatPriceForDuration(v, hours) {
+  function formatPriceForDuration(v, playMinutes, slotMinutesDefault) {
     if (v.priceAmount !== '' && v.priceAmount !== undefined && v.priceCurrencyCode) {
       const num = Number(v.priceAmount);
       if (!Number.isNaN(num)) {
+        const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
+        const pm = Math.max(0, Number(playMinutes) || 0);
+        const units = pm / slotLen;
+        if (!Number.isFinite(units) || units <= 0) {
+          return v.price || '';
+        }
         return new Intl.NumberFormat(undefined, {
           style: 'currency',
           currency: v.priceCurrencyCode,
-        }).format(num * hours);
+        }).format(num * units);
       }
     }
     return v.price || '';
@@ -504,8 +570,8 @@
         let bufferSlotCandidates = null;
         /** @type {string} yyyy-mm */
         let visibleYm = '';
-        /** @type {number} */
-        let durationHours = 1;
+        /** @type {number} Billable play length in minutes (aligned to sport duration grid). */
+        let playMinutes = 60;
         /** @type {{year: number, month0: number}} */
         let modalView = { year: new Date().getFullYear(), month0: new Date().getMonth() };
         /** @type {string|null} */
@@ -602,21 +668,56 @@
           loadDayData();
         }
 
+        function sportForDurationSelect() {
+          if (sportId == null || sportId === undefined) {
+            return undefined;
+          }
+          return s.sports.find((sp) => String(sp.id) === String(sportId));
+        }
+
+        function durationGridMinutesResolved(sport) {
+          if (!sport || !Array.isArray(sport.variations) || !sport.variations.length) {
+            return Math.max(1, slotMinutesDefault);
+          }
+          if (sport.durationGridMinutes) {
+            return Math.max(1, parseInt(String(sport.durationGridMinutes), 10) || slotMinutesDefault);
+          }
+          return lcmManyPlayGrid(
+            sport.variations.map((v) => Math.max(1, Number(v.slotMinutes) || slotMinutesDefault)),
+          );
+        }
+
+        function maxPlayMinutesResolved() {
+          return Math.max(1, Math.min(24, maxBookingHours)) * 60;
+        }
+
         function populateDurationSelect() {
           if (!elDuration) {
             return;
           }
+          const sport = sportForDurationSelect();
+          const grid = durationGridMinutesResolved(sport);
+          const cap = maxPlayMinutesResolved();
           elDuration.innerHTML = '';
-          for (let h = 1; h <= maxBookingHours; h++) {
+          for (let m = grid; m <= cap; m += grid) {
             const opt = document.createElement('option');
-            opt.value = String(h);
-            opt.textContent =
-              h === 1
-                ? Drupal.t('1 Hour')
-                : Drupal.t('@n Hours', { '@n': String(h) });
+            opt.value = String(m);
+            opt.textContent = formatPlayDurationLabel(m);
             elDuration.appendChild(opt);
           }
-          elDuration.value = '1';
+          if (!elDuration.options.length) {
+            const fallback = Math.min(60, cap);
+            const opt = document.createElement('option');
+            opt.value = String(fallback);
+            opt.textContent = formatPlayDurationLabel(fallback);
+            elDuration.appendChild(opt);
+          }
+          let want = playMinutes;
+          if (want < grid || want > cap || want % grid !== 0) {
+            want = grid;
+          }
+          playMinutes = want;
+          elDuration.value = String(playMinutes);
         }
 
         function renderSports() {
@@ -640,11 +741,6 @@
                 b.className = pillClasses(on, false);
               });
               applySportBookingRules();
-              durationHours = 1;
-              if (elDuration) {
-                elDuration.value = '1';
-              }
-              populateDurationSelect();
               elTimes.innerHTML = '';
               elCourts.innerHTML = '';
               setStatus('');
@@ -675,7 +771,6 @@
               b.className = pillClasses(on, false);
             });
             applySportBookingRules();
-            populateDurationSelect();
           }
           else {
             populateDurationSelect();
@@ -774,6 +869,7 @@
           const b = sp && sp.booking ? sp.booking : null;
           if (!b) {
             rebuildBookableYmd();
+            populateDurationSelect();
             return;
           }
           dates = Array.isArray(b.dates) ? b.dates.map((x) => ({ ...x })) : [];
@@ -789,6 +885,7 @@
           bookingDayStart = String(b.bookingDayStart || '06:00');
           bookingDayEnd = String(b.bookingDayEnd || '23:00');
           rebuildBookableYmd();
+          populateDurationSelect();
         }
 
         /**
@@ -815,26 +912,25 @@
             if (isVariationClosedOnYmd(v.id, selectedYmd)) {
               continue;
             }
-            const n = slotCountForVariation(v, slotMinutesDefault, durationHours);
+            const n = slotCountForVariation(v, slotMinutesDefault, playMinutes);
             if (!n) {
               continue;
             }
             const requiredN =
               bufferMinutes > 0
-                ? blockSlotCountForVariation(v, slotMinutesDefault, durationHours, bufferMinutes)
+                ? blockSlotCountForVariation(v, slotMinutesDefault, playMinutes, bufferMinutes)
                 : n;
             if (!requiredN) {
               continue;
             }
-            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-            if (!matchesStaggeredStart(startIso, tz, openM, bufferMinutes, durationHours, slotLen)) {
+            if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes)) {
               continue;
             }
             const starts = consecutiveBlockStarts(calendars[v.id], startIso, requiredN);
             if (!starts) {
               continue;
             }
-            const rentalEnd = playBufferEndIso(startIso, durationHours, bufferMinutes);
+            const rentalEnd = playBufferEndIso(startIso, playMinutes, bufferMinutes);
             if (!rentalEnd || !slotFitsBookingWindow(startIso, rentalEnd, tz, hasWindow, openM, closeM)) {
               continue;
             }
@@ -913,7 +1009,7 @@
             },
             body: JSON.stringify({
               ymd,
-              duration_hours: durationHours,
+              duration_minutes: playMinutes,
               variation_ids: variationIds,
               quantity: 1,
             }),
@@ -1132,26 +1228,25 @@
               if (isVariationClosedOnYmd(v.id, selectedYmd)) {
                 continue;
               }
-              const n = slotCountForVariation(v, slotMinutesDefault, durationHours);
+              const n = slotCountForVariation(v, slotMinutesDefault, playMinutes);
               if (!n) {
                 continue;
               }
               const requiredN =
                 bufferMinutes > 0
-                  ? blockSlotCountForVariation(v, slotMinutesDefault, durationHours, bufferMinutes)
+                  ? blockSlotCountForVariation(v, slotMinutesDefault, playMinutes, bufferMinutes)
                   : n;
               if (!requiredN) {
                 continue;
               }
-              const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-              if (!matchesStaggeredStart(startIso, tz, openM, bufferMinutes, durationHours, slotLen)) {
+              if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes)) {
                 continue;
               }
               const availabilityBlock = consecutiveBlock(calendars[v.id], startIso, requiredN);
               if (!availabilityBlock) {
                 continue;
               }
-              const rentalEnd = playBufferEndIso(startIso, durationHours, bufferMinutes);
+              const rentalEnd = playBufferEndIso(startIso, playMinutes, bufferMinutes);
               if (!rentalEnd || !slotFitsBookingWindow(startIso, rentalEnd, tz, hasWindow, openM, closeM)) {
                 continue;
               }
@@ -1196,7 +1291,7 @@
           timesInWindow.forEach((startIso) => {
             const row = byStart.get(startIso) || [];
             const hasSelectable = row.some(({ entry }) => isEntrySelectable(entry));
-            const rentalEnd = playBufferEndIso(startIso, durationHours, bufferMinutes);
+            const rentalEnd = playBufferEndIso(startIso, playMinutes, bufferMinutes);
 
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -1280,7 +1375,7 @@
 
             const price = document.createElement('p');
             price.className = 'text-sm font-semibold text-orange-600';
-            price.textContent = formatPriceForDuration(v, durationHours);
+            price.textContent = formatPriceForDuration(v, playMinutes, slotMinutesDefault);
 
             const buffer = document.createElement('p');
             buffer.className = 'text-xs text-slate-500';
@@ -1425,7 +1520,7 @@
 
               const price = document.createElement('p');
               price.className = 'text-sm font-semibold text-orange-600';
-              price.textContent = formatPriceForDuration(v, durationHours);
+              price.textContent = formatPriceForDuration(v, playMinutes, slotMinutesDefault);
 
               const buffer = document.createElement('p');
               buffer.className = 'text-xs text-slate-500';
@@ -1477,26 +1572,25 @@
             if (isVariationClosedOnYmd(v.id, selectedYmd)) {
               return;
             }
-            const n = slotCountForVariation(v, slotMinutesDefault, durationHours);
+            const n = slotCountForVariation(v, slotMinutesDefault, playMinutes);
             if (!n) {
               return;
             }
             const requiredN =
               bufferMinutes > 0
-                ? blockSlotCountForVariation(v, slotMinutesDefault, durationHours, bufferMinutes)
+                ? blockSlotCountForVariation(v, slotMinutesDefault, playMinutes, bufferMinutes)
                 : n;
             if (!requiredN) {
               return;
             }
-            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
-            if (!matchesStaggeredStart(startIso, siteTimeZoneId, openM, bufferMinutes, durationHours, slotLen)) {
+            if (!matchesStaggeredStart(startIso, siteTimeZoneId, openM, hasWindow, bufferMinutes, playMinutes)) {
               return;
             }
             const availabilityBlock = consecutiveBlock(calendars[v.id], startIso, requiredN);
             if (!availabilityBlock) {
               return;
             }
-            const rentalEnd = playBufferEndIso(startIso, durationHours, bufferMinutes);
+            const rentalEnd = playBufferEndIso(startIso, playMinutes, bufferMinutes);
             if (!rentalEnd || !slotFitsBookingWindow(startIso, rentalEnd, siteTimeZoneId, hasWindow, openM, closeM)) {
               return;
             }
@@ -1528,7 +1622,7 @@
                   body: JSON.stringify({
                     variation_id: v.id,
                     start: block.start,
-                    end: playBufferEndIso(block.start, durationHours, bufferMinutes),
+                    end: playBufferEndIso(block.start, playMinutes, bufferMinutes),
                     quantity: 1,
                   }),
                 });
@@ -1578,7 +1672,7 @@
 
             const price = document.createElement('p');
             price.className = 'text-sm font-semibold text-orange-600';
-            price.textContent = formatPriceForDuration(v, durationHours);
+            price.textContent = formatPriceForDuration(v, playMinutes, slotMinutesDefault);
 
             const buffer = document.createElement('p');
             buffer.className = 'text-xs text-slate-500';
@@ -1839,7 +1933,7 @@
 
         if (elDuration) {
           elDuration.addEventListener('change', () => {
-            durationHours = Math.max(1, parseInt(elDuration.value, 10) || 1);
+            playMinutes = Math.max(1, parseInt(elDuration.value, 10) || 60);
             selectedStartIso = null;
             elCourts.innerHTML = '';
             if (selectedYmd && selectedDay && (calendars || (bufferMinutes > 0 && s.slotCandidatesUrl))) {
@@ -1854,7 +1948,7 @@
 
         renderSports();
         if (dates.length) {
-          durationHours = 1;
+          playMinutes = Math.max(1, parseInt(elDuration?.value, 10) || 60);
           const today = todayYmd(siteTimeZoneId);
           if (bookableYmd.has(today)) {
             visibleYm = today.slice(0, 7);

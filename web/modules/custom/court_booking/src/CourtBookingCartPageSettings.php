@@ -104,6 +104,14 @@ final class CourtBookingCartPageSettings {
 
     $global_js = $sport_settings->bookingRulesForJs($sport_settings->getGlobalBookingRules(), $site_tz);
 
+    $cart_slot_lens = array_map(static fn (array $v): int => max(1, (int) ($v['slotMinutes'] ?? 60)), array_values($variations_out));
+    $duration_grid_minutes = CourtBookingPlayDurationGrid::lcmMany($cart_slot_lens);
+    $max_hours_cap = 24;
+    foreach ($variations_out as $row) {
+      $mh = (int) ($row['booking']['maxBookingHours'] ?? 4);
+      $max_hours_cap = min($max_hours_cap, max(1, min(24, $mh)));
+    }
+
     $cache_tags = array_values(array_unique(array_merge(
       $cache_tags,
       $cb_config->getCacheTags(),
@@ -128,7 +136,8 @@ final class CourtBookingCartPageSettings {
       'dates' => $dates_bootstrap,
       'csrfToken' => $csrf_token,
       'slotCandidatesUrl' => \Drupal\Core\Url::fromRoute('court_booking.slot_candidates')->toString(),
-      'maxBookingHours' => $global_js['maxBookingHours'],
+      'maxBookingHours' => $max_hours_cap,
+      'durationGridMinutes' => $duration_grid_minutes,
     ];
 
     return [

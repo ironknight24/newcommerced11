@@ -160,7 +160,7 @@ class SettingsForm extends ConfigFormBase {
       '#min' => 1,
       '#max' => 24,
       '#required' => TRUE,
-      '#description' => $this->t('Maximum play length in one booking (1–24). The duration dropdown on /book/amenities lists 1 hour through this value. Grid step and lesson slot length still come from Commerce BAT per variation.'),
+      '#description' => $this->t('Upper cap on <em>play</em> time in one booking (1–24 hours). The duration dropdown lists play lengths that are multiples of the lesson slot grid (LCM of mapped variations’ BAT lesson lengths) up to this cap—not only whole hours. Commerce BAT still defines slot length per variation.'),
     ];
     $form['booking_defaults']['buffer_minutes'] = [
       '#type' => 'number',
@@ -169,7 +169,7 @@ class SettingsForm extends ConfigFormBase {
       '#min' => 0,
       '#max' => 180,
       '#required' => TRUE,
-      '#description' => $this->t('Extra blocked minutes after play for turnover (0 = none). Pricing is for play time; the stored rental end is play + buffer. Non-zero buffer can stagger start times—your BAT lesson slot length should fit that grid (see module README if slots look wrong).'),
+      '#description' => $this->t('Extra blocked minutes after play for turnover (0 = none). Pricing is for play time; the stored rental end is play + buffer. With buffer enabled, offered start times repeat every <em>play + buffer</em> minutes from opening until closing. See README.'),
     ];
     $form['booking_defaults']['same_day_cutoff_hm'] = [
       '#type' => 'textfield',
@@ -300,7 +300,7 @@ class SettingsForm extends ConfigFormBase {
         '#min' => 0,
         '#max' => 180,
         '#required' => TRUE,
-        '#description' => $this->t('Same as default tab: non-billable minutes after play; 0 disables buffer. Align BAT lesson slot length with your grid if using buffer.'),
+        '#description' => $this->t('Same as default tab: non-billable minutes after play; 0 disables buffer. With buffer on, starts every play+buffer minutes from opening.'),
         '#parents' => array_merge($p, ['buffer_minutes']),
         '#states' => ['visible' => [':input[name="sport_override[' . $tid . '][enabled]"]' => ['checked' => TRUE]]],
       ];

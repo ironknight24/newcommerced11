@@ -6,6 +6,7 @@ use CommerceGuys\Intl\Formatter\CurrencyFormatterInterface;
 use Drupal\commerce_bat\Availability\AvailabilityManagerInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\court_booking\BookingTimezoneTrait;
+use Drupal\court_booking\CourtBookingPlayDurationGrid;
 use Drupal\court_booking\CourtBookingSportSettings;
 use Drupal\court_booking\CourtBookingVariationThumbnail;
 use Drupal\Core\Access\CsrfRequestHeaderAccessCheck;
@@ -121,11 +122,13 @@ class BookingPageController extends ControllerBase {
       }
       if ($variations_out) {
         $merged = $this->sportSettings->getMergedForSport($tid);
+        $slot_lens = array_map(static fn (array $v): int => max(1, (int) ($v['slotMinutes'] ?? 60)), $variations_out);
         $sports[] = [
           'id' => (string) $tid,
           'label' => $label,
           'variations' => $variations_out,
           'booking' => $this->sportSettings->bookingRulesForJs($merged, $site_tz),
+          'durationGridMinutes' => CourtBookingPlayDurationGrid::lcmMany($slot_lens),
         ];
       }
     }
