@@ -520,6 +520,23 @@
           elStatus.textContent = msg || '';
         }
 
+        /**
+         * Show or hide duration, time slot, and pitch sections (parent <section> of each block).
+         *
+         * @param {boolean} visible
+         */
+        function setBookingFlowSectionsVisible(visible) {
+          [elDuration, elTimes, elCourts].forEach((el) => {
+            if (!el) {
+              return;
+            }
+            const section = el.closest('section');
+            if (section) {
+              section.hidden = !visible;
+            }
+          });
+        }
+
         function pillClasses(on, disabled) {
           const base =
             'rounded-full border px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E] focus-visible:ring-offset-2';
@@ -570,6 +587,7 @@
             updateMonthYearLabel();
             elTimes.innerHTML = '';
             elCourts.innerHTML = '';
+            setBookingFlowSectionsVisible(true);
             setStatus(Drupal.t('Bookings are closed on this date.'));
             return;
           }
@@ -919,9 +937,11 @@
             bufferSlotCandidates = [];
             elTimes.innerHTML = '';
             elCourts.innerHTML = '';
+            setBookingFlowSectionsVisible(false);
             setStatus(Drupal.t('All courts are temporarily closed on this date.'));
             return;
           }
+          setBookingFlowSectionsVisible(true);
           setStatus(Drupal.t('Loading availability…'));
           elTimes.innerHTML = '';
           elCourts.innerHTML = '';
@@ -949,6 +969,7 @@
             renderTimesForDay();
             setStatus('');
           } catch (e) {
+            setBookingFlowSectionsVisible(true);
             setStatus(Drupal.t('Could not load availability. Please refresh.'));
             if (useCandidates) {
               bufferSlotCandidates = null;
