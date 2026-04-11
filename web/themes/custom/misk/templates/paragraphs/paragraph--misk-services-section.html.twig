@@ -1,0 +1,32 @@
+{#
+  Paragraph bundle: misk_services_section
+  Fields: field_service_icon (media image), field_service_link (link).
+#}
+{% set link_item = paragraph.field_service_link is not empty ? paragraph.field_service_link.get(0) : null %}
+{% set service_url = link_item ? link_item.getUrl().toString() : null %}
+{% set service_title = link_item ? link_item.getTitle() : '' %}
+{% set icon_src = content.field_service_icon['#items'] is not empty ? file_url(content.field_service_icon['#items'].0.entity.field_media_image.entity.uri.value) : null %}
+
+{% if service_url %}
+  <a href="{{ service_url }}" class="group misk-service-section__item flex w-full min-w-0 max-w-full flex-col items-center gap-2 px-0.5 py-1 text-center no-underline outline-none transition-[transform] duration-200 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#02216E] focus-visible:ring-offset-2 sm:gap-2.5 sm:py-1.5 md:gap-3">
+{% else %}
+  <div class="group misk-service-section__item flex w-full min-w-0 max-w-full flex-col items-center gap-2 px-0.5 py-1 text-center sm:gap-2.5 sm:py-1.5 md:gap-3">
+{% endif %}
+  {# Icon: exact #02216E / white via mask + background. Works best with solid icon on transparent PNG/SVG. #}
+  <span class="flex h-[4.75rem] w-[4.75rem] shrink-0 items-center justify-center rounded-full bg-slate-100 p-3 transition-colors duration-300 group-hover:bg-[#02216E] sm:h-[5.25rem] sm:w-[5.25rem] sm:p-4 md:h-24 md:w-24 md:p-5">
+    {% if icon_src %}
+      <span class="inline-block h-9 w-9 max-h-9 max-w-[2.5rem] shrink-0 bg-[#02216E] transition-colors duration-300 group-hover:bg-white sm:h-10 sm:w-10 sm:max-h-10 sm:max-w-[2.75rem] md:h-12 md:w-12 md:max-h-12 md:max-w-[3rem]" style="-webkit-mask-image:url({{ icon_src|e('css') }});mask-image:url({{ icon_src|e('css') }});-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;" aria-hidden="true" role="presentation"></span>
+    {% endif %}
+  </span>
+  {% if service_title %}
+    <span class="w-full max-w-[10rem] text-pretty break-words text-center text-[0.7rem] font-medium leading-tight text-[#02216E] sm:max-w-none sm:text-xs md:text-sm lg:text-base">
+      {{ service_title }}
+    </span>
+  {% endif %}
+{% if service_url %}
+  </a>
+{% else %}
+  </div>
+{% endif %}
+
+{{ content|without('field_service_icon', 'field_service_link') }}

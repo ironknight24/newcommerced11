@@ -1,0 +1,25 @@
+{#
+  Entity reference field → misk_services_section paragraphs.
+  Mobile: 2 columns; scales up to 7 across on extra-wide screens. Horizontal padding pairs with block.
+#}
+{% if label_hidden is defined and label_hidden == false %}
+  <div{{ title_attributes.addClass('sr-only') }}>{{ label }}</div>
+{% endif %}
+
+<div{{ attributes.addClass([
+  'misk-service-section__grid',
+  'grid w-full grid-cols-2 justify-items-center gap-x-2 gap-y-7',
+  'sm:grid-cols-3 sm:gap-x-3 sm:gap-y-8',
+  'md:grid-cols-4 md:gap-x-4 md:gap-y-9',
+  'lg:grid-cols-5 lg:gap-x-3 lg:gap-y-8',
+  'xl:grid-cols-7 xl:gap-x-2 xl:gap-y-0',
+]) }}>
+  {% for item in items %}
+    <div{{ item.attributes.addClass([
+      'misk-service-section__cell w-full min-w-0 justify-self-center',
+      'max-w-[6.75rem] sm:max-w-[7.5rem] md:max-w-[8rem] lg:max-w-[8.25rem] xl:max-w-[8.5rem]',
+    ]) }}>
+      {{ item.content }}
+    </div>
+  {% endfor %}
+</div>

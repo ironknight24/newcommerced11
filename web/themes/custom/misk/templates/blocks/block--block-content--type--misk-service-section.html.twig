@@ -1,0 +1,18 @@
+{#
+  Block type: misk_service_section
+  Expected: field_services (entity reference to misk_services_section paragraphs).
+  Optional: any other fields (e.g. a Link field for "View all") render in the header row.
+#}
+<section class="misk-service-section bg-white py-8 sm:py-10 md:py-14 lg:py-16" aria-labelledby="misk-services-heading">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-10">
+    <header class="mb-6 flex max-w-full flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between sm:gap-4 md:mb-10 lg:mb-12">
+      <h2 id="misk-services-heading" class="font-display text-balance break-words text-lg font-bold uppercase tracking-wider text-[#02216E] sm:text-xl md:text-2xl lg:text-3xl">
+        {{ 'Services'|t }}
+      </h2>
+      <div class="misk-service-section__header-extra min-w-0 shrink-0 sm:self-auto [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1 [&_a]:text-sm [&_a]:font-normal [&_a]:text-[#02216E] [&_a]:no-underline [&_a]:transition-colors hover:[&_a]:underline sm:[&_a]:text-base">
+        {{ content|without('field_services') }}
+      </div>
+    </header>
+    {{ content.field_services }}
+  </div>
+</section>
