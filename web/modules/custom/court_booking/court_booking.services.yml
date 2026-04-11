@@ -1,4 +1,8 @@
 services:
+  court_booking.bat_event_variation_resolver:
+    class: Drupal\court_booking\CourtBookingBatEventVariationResolver
+    arguments: ['@entity_type.manager']
+
   logger.channel.court_booking:
     parent: logger.channel_base
     arguments: ['court_booking']

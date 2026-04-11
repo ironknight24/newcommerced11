@@ -11,3 +11,10 @@ court_booking.slot_management:
   parent: commerce.configuration
   route_name: court_booking.slot_management
   weight: 36
+
+court_booking.bat_events:
+  title: 'Court booking: BAT events'
+  description: 'List bookings and blockouts (BAT events) with court column.'
+  parent: commerce.configuration
+  route_name: entity.bat_event.collection
+  weight: 37

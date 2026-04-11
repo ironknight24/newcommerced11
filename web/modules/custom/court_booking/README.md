@@ -26,6 +26,11 @@ Grant **access court booking page** and **use court booking add** to roles that 
 - Blocks are stored as **Commerce BAT blockout events** (same as **Commerce → Commerce BAT → Create blocking event**). **Temporary resource closures** in Court booking settings are separate: they are **full-day** ranges per variation for messaging/validation, not fine-grained BAT calendar blocks.
 - **Manual QA:** Grant the permission to a test user, pick a court/date/times, submit **Block time slot**, then confirm `/book/amenities` (or add-to-cart) no longer offers that window. Use **Configuration → Development → Performance → Clear cache** or `drush cr` if menus do not appear until cache is rebuilt.
 
+### BAT events list (bookings / overrides)
+
+- **Commerce → Configuration → Court booking: BAT events** links to the canonical BAT event list (`/admin/bat/events/event`). The list includes a **Court (variation)** column (from `field_variation_ref` on the event, or the linked BAT unit’s `field_variation_ref`). Edit times via each row’s **Edit** operation (core BAT event form)—no duplicate override UI in Court booking.
+- **Permission:** the list route requires **`bypass bat_event entities access`** (BAT core). Grant it to roles that manage bookings alongside Court booking permissions; the menu item is hidden if the user cannot access the route.
+
 ## Notes
 
 - The booking page, cart slot editor, buffer slot candidates API, and add-to-cart API only expose variations whose linked **`court` node exists and is published** (orphan or unpublished courts are hidden or rejected server-side).
