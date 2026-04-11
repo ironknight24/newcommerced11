@@ -1,0 +1,39 @@
+<div data-drupal-messages class="space-y-4">
+	{% for type, messages in message_list %}
+
+		{# Map Drupal message types to Tailwind styles #}
+		{% set base_classes = 'w-full rounded-lg px-4 py-3 text-sm font-medium flex items-start gap-3 shadow-sm' %}
+
+		{% if type == 'status' %}
+			{% set type_classes = 'bg-green-100 text-green-800 border border-green-200' %}
+		{% elseif type == 'error' %}
+			{% set type_classes = 'bg-red-100 text-red-800 border border-red-200' %}
+		{% elseif type == 'warning' %}
+			{% set type_classes = 'bg-yellow-100 text-yellow-800 border border-yellow-200' %}
+		{% else %}
+			{% set type_classes = 'bg-gray-100 text-gray-800 border border-gray-200' %}
+		{% endif %}
+
+		<div role="contentinfo" aria-label="{{ status_headings[type] }}" class="{{ base_classes }} {{ type_classes }}">
+
+
+			<div class="flex-1">
+				{% if status_headings[type] %}
+					<h2 class="sr-only">{{ status_headings[type] }}</h2>
+				{% endif %}
+
+				{% if messages|length > 1 %}
+					<ul class="list-disc pl-5 space-y-1">
+						{% for message in messages %}
+							<li>{{ message }}</li>
+						{% endfor %}
+					</ul>
+				{% else %}
+					{{ messages|first }}
+				{% endif %}
+			</div>
+
+		</div>
+
+	{% endfor %}
+</div>
