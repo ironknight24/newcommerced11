@@ -74,7 +74,11 @@ final class SlotCandidatesController extends ControllerBase {
 
     $filtered_ids = [];
     foreach ($variation_ids as $vid) {
-      if (isset($variations[$vid]) && court_booking_variation_is_configured($variations[$vid])) {
+      if (!isset($variations[$vid])) {
+        continue;
+      }
+      $v = $variations[$vid];
+      if (court_booking_variation_is_configured($v) && court_booking_variation_has_published_court_node($v)) {
         $filtered_ids[] = $vid;
       }
     }

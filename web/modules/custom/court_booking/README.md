@@ -22,6 +22,7 @@ Grant **access court booking page** and **use court booking add** to roles that 
 
 ## Notes
 
+- The booking page, cart slot editor, buffer slot candidates API, and add-to-cart API only expose variations whose linked **`court` node exists and is published** (orphan or unpublished courts are hidden or rejected server-side).
 - Add-to-cart forms for **lesson** BAT variations hide `field_cbat_rental_date` and link users to the booking page; products with mapped variations get a **Book a court** CTA.
 
 ## Commerce BAT profile vs Court booking settings

@@ -41,6 +41,9 @@ class CourtDetailController extends ControllerBase {
     if (!court_booking_variation_is_configured($commerce_product_variation)) {
       return AccessResult::forbidden();
     }
+    if (!court_booking_variation_has_published_court_node($commerce_product_variation)) {
+      return AccessResult::forbidden();
+    }
     return AccessResult::allowedIfHasPermission($account, 'access court booking page');
   }
 

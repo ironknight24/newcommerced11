@@ -95,6 +95,11 @@ class BookingPageController extends ControllerBase {
       $label = $term ? $term->getName() : (string) $tid;
       $variations_out = [];
       foreach ($variation_entities as $variation) {
+        $court_node = court_booking_variation_published_court_node($variation);
+        if (!$court_node) {
+          continue;
+        }
+        $booking_page_cache_tags = array_merge($booking_page_cache_tags, $court_node->getCacheTags());
         $price = '';
         $price_amount = '';
         $price_currency = '';

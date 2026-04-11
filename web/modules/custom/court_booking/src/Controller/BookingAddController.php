@@ -73,6 +73,10 @@ class BookingAddController extends ControllerBase {
       return new JsonResponse(['message' => (string) $this->t('This court is not enabled for the booking page.')], 403);
     }
 
+    if (!court_booking_variation_has_published_court_node($variation)) {
+      return new JsonResponse(['message' => (string) $this->t('This court is not available for booking.')], 403);
+    }
+
     $validation = $this->slotBooking->validateLessonSlot(
       $variation,
       (string) $start_raw,

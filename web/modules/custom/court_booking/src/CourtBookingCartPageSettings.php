@@ -46,6 +46,10 @@ final class CourtBookingCartPageSettings {
         if (!$item->hasField('field_cbat_rental_date') || $item->get('field_cbat_rental_date')->isEmpty()) {
           continue;
         }
+        $court_node = court_booking_variation_published_court_node($purchased);
+        if (!$court_node) {
+          continue;
+        }
         $vid = (int) $purchased->id();
         if (isset($variations_out[$vid])) {
           continue;
@@ -60,7 +64,7 @@ final class CourtBookingCartPageSettings {
           $price_currency = $p->getCurrencyCode();
         }
         $thumb = CourtBookingVariationThumbnail::data($purchased, $file_url_generator);
-        $cache_tags = array_merge($cache_tags, $thumb['cache_tags'], $purchased->getCacheTags());
+        $cache_tags = array_merge($cache_tags, $thumb['cache_tags'], $purchased->getCacheTags(), $court_node->getCacheTags());
         $slot_len = max(1, (int) $availability_manager->getLessonSlotLength($purchased));
         $merged = $sport_settings->getMergedForVariation($purchased);
         $variations_out[$vid] = [

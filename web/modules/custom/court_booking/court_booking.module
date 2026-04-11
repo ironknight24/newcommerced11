@@ -164,6 +164,24 @@ function court_booking_variation_is_configured(ProductVariationInterface $variat
 }
 
 /**
+ * Linked court node for this variation when that node is published.
+ *
+ * @return \Drupal\node\NodeInterface|null
+ *   The court bundle node, or NULL if missing or unpublished.
+ */
+function court_booking_variation_published_court_node(ProductVariationInterface $variation): ?NodeInterface {
+  $node = CourtBookingVariationThumbnail::courtNode($variation);
+  return ($node instanceof NodeInterface && $node->isPublished()) ? $node : NULL;
+}
+
+/**
+ * TRUE when the variation has a linked court node that is published.
+ */
+function court_booking_variation_has_published_court_node(ProductVariationInterface $variation): bool {
+  return court_booking_variation_published_court_node($variation) !== NULL;
+}
+
+/**
  * First configured sport term ID for this variation, or 0.
  */
 function court_booking_sport_tid_for_variation(ProductVariationInterface $variation): int {
