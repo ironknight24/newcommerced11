@@ -1,0 +1,3 @@
+administer dual language switch:
+  title: 'Administer dual language switcher'
+  description: 'Configure which enabled language is paired with the site default for the dual-language block.'

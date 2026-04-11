@@ -1,0 +1,9 @@
+name: 'Dual language switcher'
+type: module
+description: 'Shows a single language switch link between the site default and a configured secondary language (ignores other enabled languages in the UI).'
+package: Multilingual
+core_version_requirement: ^10 || ^11
+dependencies:
+  - drupal:language
+  - drupal:block
+  - drupal:system

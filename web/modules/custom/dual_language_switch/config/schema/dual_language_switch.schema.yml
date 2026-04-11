@@ -1,0 +1,7 @@
+dual_language_switch.settings:
+  type: config_object
+  label: 'Dual language switcher settings'
+  mapping:
+    secondary_langcode:
+      type: string
+      label: 'Secondary language code'

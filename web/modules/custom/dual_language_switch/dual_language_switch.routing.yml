@@ -1,0 +1,7 @@
+dual_language_switch.settings:
+  path: '/admin/config/regional/dual-language'
+  defaults:
+    _form: '\Drupal\dual_language_switch\Form\DualLanguageSettingsForm'
+    _title: 'Dual language switcher'
+  requirements:
+    _permission: 'administer dual language switch'

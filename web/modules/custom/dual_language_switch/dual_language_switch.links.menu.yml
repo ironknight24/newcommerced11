@@ -1,0 +1,6 @@
+dual_language_switch.settings:
+  title: 'Dual language switcher'
+  description: 'Choose the secondary language for the dual-language switcher block.'
+  parent: system.admin_config_regional
+  route_name: dual_language_switch.settings
+  weight: 15
