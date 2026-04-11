@@ -109,7 +109,17 @@ final class DualLanguageSwitcherBlock extends BlockBase implements ContainerFact
       return $this->buildEmpty();
     }
 
-    $one = [$target_id => $switch->links[$target_id]];
+    $link = $switch->links[$target_id];
+    $fallback_title = $link['title'] ?? '';
+    if (is_object($fallback_title) && method_exists($fallback_title, '__toString')) {
+      $fallback_title = (string) $fallback_title;
+    }
+    elseif (!is_string($fallback_title)) {
+      $fallback_title = isset($languages[$target_id]) ? $languages[$target_id]->getName() : '';
+    }
+    $link['title'] = $this->nativeLanguageDisplayName($target_id, $fallback_title);
+
+    $one = [$target_id => $link];
     $build = [
       '#theme' => 'links__language_block',
       '#links' => $one,
@@ -134,6 +144,25 @@ final class DualLanguageSwitcherBlock extends BlockBase implements ContainerFact
     $cache->applyTo($build);
 
     return $build;
+  }
+
+  /**
+   * Display name for a language in its own locale (e.g. العربية, हिन्दी).
+   *
+   * @param string $langcode
+   *   BCP 47 language code.
+   * @param string $fallback
+   *   Label from core negotiation if Intl is unavailable.
+   */
+  private function nativeLanguageDisplayName(string $langcode, string $fallback): string {
+    if (extension_loaded('intl') && class_exists(\Locale::class)) {
+      $canonical = \Locale::canonicalize($langcode) ?: $langcode;
+      $native = \Locale::getDisplayLanguage($canonical, $canonical);
+      if ($native !== '') {
+        return $native;
+      }
+    }
+    return $fallback;
   }
 
   /**

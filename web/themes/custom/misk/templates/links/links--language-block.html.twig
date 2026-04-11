@@ -1,0 +1,37 @@
+{#
+/**
+ * @file
+ * Language switcher links (core Language block + dual_language_switch block).
+ *
+ * Parent ul uses arbitrary selectors so child <a> from core get #0033a1 styling
+ * without mutating the link render array in Twig.
+ *
+ * @see template_preprocess_links()
+ */
+#}
+{% if links -%}
+  {%- if heading -%}
+    {%- if heading.level -%}
+      <{{ heading.level }}{{ heading.attributes }}>{{ heading.text }}</{{ heading.level }}>
+    {%- else -%}
+      <h2{{ heading.attributes }}>{{ heading.text }}</h2>
+    {%- endif -%}
+  {%- endif -%}
+  <ul{{ attributes.addClass(
+    'flex', 'flex-wrap', 'list-none', 'm-0', 'p-0', 'items-center', 'gap-6', 'md:gap-8',
+    '[&_a]:text-[#0033a1]', '[&_a]:font-semibold', '[&_a]:text-sm', '[&_a]:md:text-base',
+    '[&_a]:tracking-wide', '[&_a]:hover:underline', '[&_a]:transition', '[&_a]:duration-200'
+  ) }} dir="auto">
+    {%- for item in links -%}
+      <li{{ item.attributes.addClass('relative') }}>
+        {%- if item.link -%}
+          {{ item.link }}
+        {%- elseif item.text_attributes -%}
+          <span{{ item.text_attributes.addClass('text-[#0033a1]', 'font-semibold', 'text-sm', 'md:text-base') }}>{{ item.text }}</span>
+        {%- else -%}
+          {{ item.text }}
+        {%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+{%- endif %}
