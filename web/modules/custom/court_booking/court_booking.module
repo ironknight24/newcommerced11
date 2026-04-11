@@ -389,3 +389,17 @@ function court_booking_entity_type_alter(array &$entity_types): void {
     $entity_types['bat_event']->setListBuilderClass(\Drupal\court_booking\BatEventListBuilder::class);
   }
 }
+
+/**
+ * Implements hook_modules_installed().
+ */
+function court_booking_modules_installed(array $modules, bool $is_syncing): void {
+  if ($is_syncing) {
+    return;
+  }
+  if (!in_array('locale', $modules, TRUE)) {
+    return;
+  }
+  \Drupal::moduleHandler()->loadInclude('court_booking', 'inc', 'court_booking.locale_register');
+  _court_booking_register_js_interface_strings();
+}

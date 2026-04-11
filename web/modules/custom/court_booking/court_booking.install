@@ -12,6 +12,10 @@ use Drupal\user\RoleInterface;
  */
 function court_booking_install(): void {
   _court_booking_grant_default_booking_permissions();
+  if (\Drupal::moduleHandler()->moduleExists('locale')) {
+    \Drupal::moduleHandler()->loadInclude('court_booking', 'inc', 'court_booking.locale_register');
+    _court_booking_register_js_interface_strings();
+  }
 }
 
 /**
@@ -235,4 +239,12 @@ function court_booking_update_9013(): void {
     }
   }
   $config->save();
+}
+
+/**
+ * Register JavaScript interface strings (Drupal.t) in Locale for translate UI.
+ */
+function court_booking_update_9014(): void {
+  \Drupal::moduleHandler()->loadInclude('court_booking', 'inc', 'court_booking.locale_register');
+  _court_booking_register_js_interface_strings();
 }

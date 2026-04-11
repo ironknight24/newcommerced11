@@ -46,12 +46,35 @@ The **Commerce BAT** module in this project may include a small change in `Avail
 ## Interface translation (Twig + JavaScript)
 
 - **Twig** copy uses `|t` and appears under **Configuration → Region and language → User interface translation** (after cache clears as needed).
-- **JavaScript** strings use `Drupal.t()` / `Drupal.formatPlural()` in `js/court_booking.js` and `js/cart_slot.js`. They are **not** picked up until the Locale module has run **string extraction** against the codebase (so `locales_source` is populated). Enable the core **Locale** module, then either:
-  - Run Drush when available, e.g. `drush locale:check` (exact command name can differ slightly by Drupal version—use `drush list | grep locale` if unsure), or
-  - Use the admin UI: **User interface translation** → run **Extract** / **Check** / **Update** (wording varies by version).
-- Search the translation UI for the **exact English source** from code, including placeholders (`@time`, `@count`, etc.).
+- **`Drupal.t()` on Drupal 11** is provided by `core/drupal` (already a dependency of this module’s libraries). It only shows translated text after the **Locale** module has registered the string and you have saved a translation for the active language; otherwise the English source is returned.
+
+### Checklist: JS strings (e.g. “View details”, buffer line, “Book”)
+
+1. After upgrading **court_booking**, run database updates so JS sources are registered: `ddev drush updb -y` (runs `court_booking_update_9014`, which inserts `Drupal.t()` strings into Locale). Then search **Translate interface** for e.g. `View details` or `Price is for play time only`.
+2. Enable the core **Locale** module: `drush en locale -y` (or **Extend** in the admin UI).
+3. **Scan for new strings** so `court_booking.js` / `cart_slot.js` are parsed and `Drupal.t()` sources exist in the database:
+   - **Reports → Available translation updates** → **Check manually** (path is typically `/admin/reports/translations/check`), or  
+   - Drush: `drush locale:check` (run `drush list locale` if the command name differs on your install).
+4. Open **Configuration → Region and language → User interface translation** and search for the **exact English source** (including placeholders), e.g. `View details`, `Book`, `Price is for play time only; the listed time includes @n min buffer.`
+5. Enter the target-language text, save, then run **`drush cr`**. Locale rebuilds per-language **JavaScript translation** files (`window.drupalTranslations`); without this, `Drupal.t()` can stay English even when PHP strings are translated.
+6. Load the booking page in the **negotiated language** (language switcher / URL prefix). In devtools, confirm a `*.js` request under `sites/default/files/languages/…` when Locale is active.
+
+**Summary:** Interface strings need **Locale extraction**, a **saved translation** for each language, and a **cache rebuild** so JS translation files regenerate. Entity titles (courts, sports) need **content translation**, not only the interface UI.
+
+Strings live in `js/court_booking.js` and `js/cart_slot.js`; placeholders must match the code (`@time`, `@count`, `@n`, etc.).
+
 - **Weekday abbreviations** on the date strip and **Intl-based** month/time labels follow the **current interface language** via PHP `date.formatter` and `drupalSettings.courtBooking` / `courtBookingCart` keys `interfaceLangcode` and `intlLocale`.
 - **Language switcher**: Booking JS reads `interfaceLangcode` / `intlLocale` from the same page request as everything else (`LanguageManagerInterface::getCurrentLanguage()`). Whatever language your switcher negotiates (Arabic, Hindi, Spanish, …) becomes the active interface language for that request—add **Interface translation** strings and **Locale** extraction for each new language you enable.
 - **Numerals**: For languages that use non-Latin digits (e.g. Arabic), `intlLocale` includes a Unicode numbering extension (e.g. `-u-nu-arab`) so **Intl** formats times and prices with native numerals. Western languages (e.g. Spanish) keep Latin digits. Extend `CourtBookingRegional::intlNumberingSystemForPrimaryLanguage()` if you add a language that needs a different numbering system.
 - **Product/variation titles** and taxonomy sport names are **content**; translate them with **Content translation** (or equivalent), not only Interface translation.
+
+### Translating variation titles (e.g. “Padel Court”)
+
+Card headings use **`variation->getTitle()`** from Commerce (`title` in `drupalSettings`), not `Drupal.t()`. To show Arabic or another language:
+
+1. Enable **Content translation** (and **Commerce** translation integration if your site uses it).
+2. Edit the **product variation** (or product) and add a translation for the **title** field for the target language, or use the content translation UI for `commerce_product_variation`.
+3. Do **not** wrap dynamic titles in `Drupal.t()` in JavaScript—that would break other courts and languages.
+
+The **price** line is formatted with **Intl** (`Intl.NumberFormat` + currency code) or the preformatted price from PHP—it is not a single translatable sentence; currency symbols follow locale rules.
 
