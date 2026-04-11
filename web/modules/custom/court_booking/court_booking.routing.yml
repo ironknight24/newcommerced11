@@ -57,3 +57,11 @@ court_booking.settings:
     _title: 'Court booking'
   requirements:
     _permission: 'administer court booking'
+
+court_booking.slot_management:
+  path: '/admin/commerce/config/court-booking/slot-management'
+  defaults:
+    _form: '\Drupal\court_booking\Form\SlotManagementForm'
+    _title: 'Slot management'
+  requirements:
+    _custom_access: '\Drupal\court_booking\Access\SlotManagementAccess::access'

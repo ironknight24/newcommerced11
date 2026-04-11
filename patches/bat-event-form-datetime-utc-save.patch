@@ -1,25 +1,37 @@
 diff --git a/modules/bat_event/src/Entity/Form/EventForm.php b/modules/bat_event/src/Entity/Form/EventForm.php
 --- a/modules/bat_event/src/Entity/Form/EventForm.php
 +++ b/modules/bat_event/src/Entity/Form/EventForm.php
-@@ -218,8 +218,8 @@
- 
+@@ -218,8 +218,16 @@
      $values = $form_state->getValues();
  
 -    $start_date = new \DateTime($values['event_dates'][0]['value']->format('Y-m-d H:i:s'));
 -    $end_date = new \DateTime($values['event_dates'][0]['end_value']->format('Y-m-d H:i:s'));
-+    $start_date = \DateTime::createFromInterface($values['event_dates'][0]['value'])->setTimezone(new \DateTimeZone('UTC'));
-+    $end_date = \DateTime::createFromInterface($values['event_dates'][0]['end_value'])->setTimezone(new \DateTimeZone('UTC'));
++    $start_in = $values['event_dates'][0]['value'];
++    $end_in = $values['event_dates'][0]['end_value'];
++    // DrupalDateTime (DateTimePlus) is not a DateTimeInterface; use getPhpDateTime() before createFromInterface().
++    $start_date = \DateTime::createFromInterface(
++      $start_in instanceof \Drupal\Core\Datetime\DrupalDateTime ? $start_in->getPhpDateTime() : $start_in
++    )->setTimezone(new \DateTimeZone('UTC'));
++    $end_date = \DateTime::createFromInterface(
++      $end_in instanceof \Drupal\Core\Datetime\DrupalDateTime ? $end_in->getPhpDateTime() : $end_in
++    )->setTimezone(new \DateTimeZone('UTC'));
  
      // The end date must be greater or equal than start date.
      if ($end_date < $start_date) {
-@@ -282,8 +282,8 @@
+@@ -282,8 +290,16 @@
      $data['event_type'] = bat_event_type_load($data['event']->bundle());
      $data['values'] = $form_state->getValues();
  
 -    $data['start_date'] = new \DateTime($data['values']['event_dates'][0]['value']->format('Y-m-d H:i:s'));
 -    $data['end_date'] = new \DateTime($data['values']['event_dates'][0]['end_value']->format('Y-m-d H:i:s'));
-+    $data['start_date'] = \DateTime::createFromInterface($data['values']['event_dates'][0]['value'])->setTimezone(new \DateTimeZone('UTC'));
-+    $data['end_date'] = \DateTime::createFromInterface($data['values']['event_dates'][0]['end_value'])->setTimezone(new \DateTimeZone('UTC'));
++    $v_start = $data['values']['event_dates'][0]['value'];
++    $v_end = $data['values']['event_dates'][0]['end_value'];
++    $data['start_date'] = \DateTime::createFromInterface(
++      $v_start instanceof \Drupal\Core\Datetime\DrupalDateTime ? $v_start->getPhpDateTime() : $v_start
++    )->setTimezone(new \DateTimeZone('UTC'));
++    $data['end_date'] = \DateTime::createFromInterface(
++      $v_end instanceof \Drupal\Core\Datetime\DrupalDateTime ? $v_end->getPhpDateTime() : $v_end
++    )->setTimezone(new \DateTimeZone('UTC'));
  
      $data['event']->setStartDate($data['start_date']);
      $data['event']->setEndDate($data['end_date']);

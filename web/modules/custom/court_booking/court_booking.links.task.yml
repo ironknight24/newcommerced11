@@ -1,0 +1,10 @@
+court_booking.settings_tab:
+  route_name: court_booking.settings
+  base_route: court_booking.settings
+  title: 'Settings'
+
+court_booking.slot_management_tab:
+  route_name: court_booking.slot_management
+  base_route: court_booking.settings
+  title: 'Slot management'
+  weight: 10

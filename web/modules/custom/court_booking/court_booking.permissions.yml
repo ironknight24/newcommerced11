@@ -4,3 +4,6 @@ use court booking add:
   title: 'Use court booking add to cart'
 administer court booking:
   title: 'Administer court booking settings'
+administer court booking slot blocks:
+  title: 'Block court time slots (slot management)'
+  description: 'Use the Slot management screen to create Commerce BAT blockouts for mapped courts without full Commerce administration rights.'

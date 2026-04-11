@@ -20,6 +20,12 @@ drush cr
 
 Grant **access court booking page** and **use court booking add** to roles that should book (often anonymous + authenticated). Configure mappings at **Commerce → Configuration → Court booking** (one line per sport: `TERM_ID|VARIATION_ID,VARIATION_ID`).
 
+### Slot management (admin)
+
+- **Commerce → Configuration → Court booking: Slot management** (`/admin/commerce/config/court-booking/slot-management`) lets staff block a **date and local time range** on a mapped lesson court without needing **Administer commerce**. Permission: **Block court time slots (slot management)** (`administer court booking slot blocks`). Users with **Administer court booking settings** can use the same screen via the **Slot management** tab next to Court booking settings.
+- Blocks are stored as **Commerce BAT blockout events** (same as **Commerce → Commerce BAT → Create blocking event**). **Temporary resource closures** in Court booking settings are separate: they are **full-day** ranges per variation for messaging/validation, not fine-grained BAT calendar blocks.
+- **Manual QA:** Grant the permission to a test user, pick a court/date/times, submit **Block time slot**, then confirm `/book/amenities` (or add-to-cart) no longer offers that window. Use **Configuration → Development → Performance → Clear cache** or `drush cr` if menus do not appear until cache is rebuilt.
+
 ## Notes
 
 - The booking page, cart slot editor, buffer slot candidates API, and add-to-cart API only expose variations whose linked **`court` node exists and is published** (orphan or unpublished courts are hidden or rejected server-side).
