@@ -26,7 +26,11 @@
         "drupal/core-project-message": "^11.2",
         "drupal/core-recipe-unpack": "^11.2",
         "drupal/core-recommended": "^11.2",
-        "drush/drush": "^13.7"
+        "drupal/gin": "^5.0",
+        "drupal/paragraphs": "^1.20",
+        "drush/drush": "^13.7",
+        "endroid/qr-code": "^6.0",
+        "razorpay/razorpay": "^2.9"
     },
     "conflict": {
         "drupal/drupal": "*"

@@ -1,0 +1,6 @@
+{# Slider items stack in the hero grid; wrapper keeps field markup predictable for layout/CSS. #}
+<div class="contents">
+  {% for item in items %}
+    {{ item.content }}
+  {% endfor %}
+</div>

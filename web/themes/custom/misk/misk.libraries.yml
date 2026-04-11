@@ -4,3 +4,10 @@ global:
       # Bypass CSS aggregation so Tailwind rebuilds apply immediately (aggregates
       # can stay stale until css-js cache clear).
       dist/misk.css: { minified: true, preprocess: false }
+
+misk-hero:
+  js:
+    js/misk-hero.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

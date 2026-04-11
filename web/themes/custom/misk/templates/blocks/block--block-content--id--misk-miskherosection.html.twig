@@ -1,0 +1,27 @@
+{{ attach_library('misk/misk-hero') }}
+
+<div class="relative w-full min-h-[18rem] h-[clamp(18rem,52svh,37.5rem)] md:h-[37.5rem] md:min-h-[37.5rem] overflow-hidden">
+
+  {# Background Video #}
+  <div class="absolute inset-0 w-full h-full min-h-[inherit]">
+    <video class="absolute inset-0 h-full min-h-full w-full object-cover" aria-label="Background video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+      <source src="{{ file_url(content.field_misk_background_video['#items'].0.entity.field_media_video_file.entity.uri.value) }}" type="video/mp4">
+    </video>
+  </div>
+
+  {# Overlay #}
+  <div class="absolute inset-0 bg-black/50 z-10"></div>
+
+  {# Content: title block centered; dash indicators pinned to hero bottom #}
+  <div class="misk-hero absolute inset-0 z-20 flex min-h-0 flex-col text-center">
+    <div class="flex min-h-0 flex-1 items-center justify-center px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
+      <div class="w-full min-w-0 max-w-4xl">
+        <div id="misk-hero-slider" class="relative grid min-h-0 w-full grid-cols-1 grid-rows-1 place-items-center [&_.misk-slide]:col-start-1 [&_.misk-slide]:row-start-1">
+          {{ content.field_misk_slider_section }}
+        </div>
+      </div>
+    </div>
+    <div id="misk-dots" class="flex shrink-0 justify-center gap-1.5 pb-6 sm:gap-2 sm:pb-8 md:pb-10" role="group" aria-label="{{ 'Hero slides'|t }}"></div>
+  </div>
+
+</div>

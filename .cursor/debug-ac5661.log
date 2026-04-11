@@ -1,0 +1,8 @@
+{"sessionId":"ac5661","location":"misk-hero.js:attach-entry","message":"context slider count","data":{"contextSliderCount":0},"timestamp":1775939482294,"hypothesisId":"A","runId":"pre-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:attach-entry","message":"context slider count","data":{"contextSliderCount":1},"timestamp":1775939482298,"hypothesisId":"A","runId":"pre-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:attach","message":"miskHero slider init","data":{"slideCount":3,"heroRootFound":true,"dotsId":"misk-dots"},"timestamp":1775939482299,"hypothesisId":"B","runId":"post-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:started","message":"carousel running","data":{"dotButtons":3},"timestamp":1775939482300,"hypothesisId":"A","runId":"post-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:attach-entry","message":"context slider count","data":{"contextSliderCount":0},"timestamp":1775939541696,"hypothesisId":"A","runId":"pre-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:attach-entry","message":"context slider count","data":{"contextSliderCount":1},"timestamp":1775939541699,"hypothesisId":"A","runId":"pre-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:attach","message":"miskHero slider init","data":{"slideCount":3,"heroRootFound":true,"dotsId":"misk-dots"},"timestamp":1775939541699,"hypothesisId":"B","runId":"post-fix"}
+{"sessionId":"ac5661","location":"misk-hero.js:started","message":"carousel running","data":{"dotButtons":3},"timestamp":1775939541700,"hypothesisId":"A","runId":"post-fix"}

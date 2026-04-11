@@ -5,6 +5,7 @@ module.exports = {
   // Resolve from this file so `npm run build` works regardless of cwd.
   content: [
     path.join(__dirname, 'templates/**/*.twig'),
+    path.join(__dirname, 'js/**/*.js'),
     path.join(__dirname, 'src/**/*.css'),
     // From web/themes/custom/misk → web/modules/custom/court_booking
     path.join(__dirname, '../../../modules/custom/court_booking/templates/**/*.twig'),

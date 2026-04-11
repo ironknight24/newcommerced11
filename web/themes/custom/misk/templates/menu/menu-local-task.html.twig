@@ -1,0 +1,19 @@
+{% set classes = [
+  'list-none'
+] %}
+
+{% set active_classes = [
+  'bg-[#02216E]',
+  'text-white',
+  'hover:bg-[#02216E]/80'
+] %}
+
+{% set inactive_classes = [
+  'bg-white',
+  'text-[#02216E]',
+  'hover:bg-slate-50'
+] %}
+
+<li{{ attributes.addClass(classes, is_active ? active_classes : inactive_classes, 'px-4', 'py-2', 'rounded-md', 'text-sm', 'font-medium', 'transition') }}>
+  {{ link }}
+</li>
