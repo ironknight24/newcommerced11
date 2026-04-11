@@ -7,6 +7,7 @@ use Drupal\commerce_bat\Availability\AvailabilityManagerInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\court_booking\BookingTimezoneTrait;
 use Drupal\court_booking\CourtBookingPlayDurationGrid;
+use Drupal\court_booking\CourtBookingRegional;
 use Drupal\court_booking\CourtBookingSportSettings;
 use Drupal\court_booking\CourtBookingVariationThumbnail;
 use Drupal\Core\Access\CsrfRequestHeaderAccessCheck;
@@ -48,6 +49,7 @@ class BookingPageController extends ControllerBase {
     $commerce_bat = $this->config('commerce_bat.settings');
     $slot_minutes = (int) ($commerce_bat->get('lesson_slot_length_minutes') ?: 60);
     $site_tz = $this->displayTimeZoneId();
+    $langcode = $this->languageManager()->getCurrentLanguage()->getId();
     $request = \Drupal::request();
     $initial_sport = $request->query->get('sport');
     $initial_sport_str = $initial_sport !== NULL && $initial_sport !== '' ? (string) $initial_sport : '';
@@ -127,7 +129,7 @@ class BookingPageController extends ControllerBase {
           'id' => (string) $tid,
           'label' => $label,
           'variations' => $variations_out,
-          'booking' => $this->sportSettings->bookingRulesForJs($merged, $site_tz),
+          'booking' => $this->sportSettings->bookingRulesForJs($merged, $site_tz, $langcode),
           'durationGridMinutes' => CourtBookingPlayDurationGrid::lcmMany($slot_lens),
         ];
       }
@@ -138,8 +140,8 @@ class BookingPageController extends ControllerBase {
     $csrf_token = \Drupal::csrfToken()->get(CsrfRequestHeaderAccessCheck::TOKEN_KEY);
 
     $settings_config = $this->config('court_booking.settings');
-    $country_code = \Drupal\court_booking\CourtBookingRegional::defaultCountryCode(\Drupal::configFactory());
-    $first_day = \Drupal\court_booking\CourtBookingRegional::firstDayOfWeek(\Drupal::configFactory());
+    $country_code = CourtBookingRegional::defaultCountryCode(\Drupal::configFactory());
+    $first_day = CourtBookingRegional::firstDayOfWeek(\Drupal::configFactory());
     $initial_variation = $request->query->get('variation');
 
     $default_tid = 0;
@@ -155,7 +157,7 @@ class BookingPageController extends ControllerBase {
     $merged_root = $default_tid > 0
       ? $this->sportSettings->getMergedForSport($default_tid)
       : $this->sportSettings->getGlobalBookingRules();
-    $js_root = $this->sportSettings->bookingRulesForJs($merged_root, $site_tz);
+    $js_root = $this->sportSettings->bookingRulesForJs($merged_root, $site_tz, $langcode);
     $dates_bootstrap = $js_root['dates'];
     $booking_day_start = $js_root['bookingDayStart'];
     $booking_day_end = $js_root['bookingDayEnd'];
@@ -177,6 +179,8 @@ class BookingPageController extends ControllerBase {
             'slotInterval' => $interval,
             'slotMinutes' => max(1, $slot_minutes),
             'timezone' => $site_tz,
+            'interfaceLangcode' => $langcode,
+            'intlLocale' => CourtBookingRegional::intlLocaleForLangcode($langcode),
             'countryCode' => $country_code,
             'firstDayOfWeek' => $first_day,
             'bookingDayStart' => $booking_day_start,

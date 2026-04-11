@@ -5,6 +5,7 @@ namespace Drupal\court_booking;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
+use Drupal\Core\Datetime\DateFormatterInterface;
 
 /**
  * Merges global court_booking.settings with per-sport overrides.
@@ -13,6 +14,7 @@ final class CourtBookingSportSettings {
 
   public function __construct(
     protected ConfigFactoryInterface $configFactory,
+    protected DateFormatterInterface $dateFormatter,
   ) {}
 
   /**
@@ -84,7 +86,7 @@ final class CourtBookingSportSettings {
    *
    * @return list<array{ymd: string, dayNum: string, weekday: string, from: string, to: string}>
    */
-  public function buildDatesBootstrap(array $rules, string $site_tz): array {
+  public function buildDatesBootstrap(array $rules, string $site_tz, ?string $langcode = NULL): array {
     $days_ahead = max(1, min(365, (int) ($rules['days_ahead'] ?? 60)));
     $out = [];
     try {
@@ -94,10 +96,13 @@ final class CourtBookingSportSettings {
         $day_local = $start->modify('+' . $i . ' days');
         $day_start_utc = $day_local->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
         $day_end_utc = $day_local->modify('+1 day')->setTime(0, 0)->setTimezone(new \DateTimeZone('UTC'));
+        $noon_ts = $day_local->setTime(12, 0, 0)->getTimestamp();
+        $weekday = $this->dateFormatter->format($noon_ts, 'custom', 'D', $site_tz, $langcode);
+        $dayNum = $this->dateFormatter->format($noon_ts, 'custom', 'j', $site_tz, $langcode);
         $out[] = [
           'ymd' => $day_local->format('Y-m-d'),
-          'dayNum' => $day_local->format('j'),
-          'weekday' => $day_local->format('D'),
+          'dayNum' => $dayNum,
+          'weekday' => $weekday,
           'from' => $day_start_utc->format('Y-m-d\TH:i:s\Z'),
           'to' => $day_end_utc->format('Y-m-d\TH:i:s\Z'),
         ];
@@ -116,7 +121,7 @@ final class CourtBookingSportSettings {
    *
    * @return array<string, mixed>
    */
-  public function bookingRulesForJs(array $rules, string $site_tz): array {
+  public function bookingRulesForJs(array $rules, string $site_tz, ?string $langcode = NULL): array {
     return [
       'bookingDayStart' => (string) ($rules['booking_day_start'] ?: '06:00'),
       'bookingDayEnd' => (string) ($rules['booking_day_end'] ?: '23:00'),
@@ -124,7 +129,7 @@ final class CourtBookingSportSettings {
       'sameDayCutoffHm' => trim((string) ($rules['same_day_cutoff_hm'] ?? '')),
       'blackoutDates' => array_values(array_unique(array_filter(array_map('strval', (array) ($rules['blackout_dates'] ?? []))))),
       'resourceClosuresByVariation' => $this->closuresByVariationForJs((array) ($rules['resource_closures'] ?? [])),
-      'dates' => $this->buildDatesBootstrap($rules, $site_tz),
+      'dates' => $this->buildDatesBootstrap($rules, $site_tz, $langcode),
       'maxBookingHours' => max(1, min(24, (int) ($rules['max_booking_hours'] ?? 4))),
     ];
   }

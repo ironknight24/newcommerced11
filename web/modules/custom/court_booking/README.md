@@ -43,3 +43,15 @@ With **buffer = 0**, the booking UI lists only starts spaced by the **selected p
 
 The **Commerce BAT** module in this project may include a small change in `AvailabilityManager::isAvailable()` so a duration of **play + Court booking buffer** is accepted when play aligns to the lesson grid (restore that change after `composer update` if contrib is overwritten).
 
+## Interface translation (Twig + JavaScript)
+
+- **Twig** copy uses `|t` and appears under **Configuration → Region and language → User interface translation** (after cache clears as needed).
+- **JavaScript** strings use `Drupal.t()` / `Drupal.formatPlural()` in `js/court_booking.js` and `js/cart_slot.js`. They are **not** picked up until the Locale module has run **string extraction** against the codebase (so `locales_source` is populated). Enable the core **Locale** module, then either:
+  - Run Drush when available, e.g. `drush locale:check` (exact command name can differ slightly by Drupal version—use `drush list | grep locale` if unsure), or
+  - Use the admin UI: **User interface translation** → run **Extract** / **Check** / **Update** (wording varies by version).
+- Search the translation UI for the **exact English source** from code, including placeholders (`@time`, `@count`, etc.).
+- **Weekday abbreviations** on the date strip and **Intl-based** month/time labels follow the **current interface language** via PHP `date.formatter` and `drupalSettings.courtBooking` / `courtBookingCart` keys `interfaceLangcode` and `intlLocale`.
+- **Language switcher**: Booking JS reads `interfaceLangcode` / `intlLocale` from the same page request as everything else (`LanguageManagerInterface::getCurrentLanguage()`). Whatever language your switcher negotiates (Arabic, Hindi, Spanish, …) becomes the active interface language for that request—add **Interface translation** strings and **Locale** extraction for each new language you enable.
+- **Numerals**: For languages that use non-Latin digits (e.g. Arabic), `intlLocale` includes a Unicode numbering extension (e.g. `-u-nu-arab`) so **Intl** formats times and prices with native numerals. Western languages (e.g. Spanish) keep Latin digits. Extend `CourtBookingRegional::intlNumberingSystemForPrimaryLanguage()` if you add a language that needs a different numbering system.
+- **Product/variation titles** and taxonomy sport names are **content**; translate them with **Content translation** (or equivalent), not only Interface translation.
+

@@ -9,6 +9,7 @@ use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Core\Access\CsrfRequestHeaderAccessCheck;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 
 /**
@@ -27,7 +28,9 @@ final class CourtBookingCartPageSettings {
     FileUrlGeneratorInterface $file_url_generator,
     ConfigFactoryInterface $config_factory,
     CourtBookingSportSettings $sport_settings,
+    LanguageManagerInterface $language_manager,
   ): ?array {
+    $langcode = $language_manager->getCurrentLanguage()->getId();
     $carts = $cart_provider->getCarts($account);
     $variations_out = [];
     $cache_tags = [];
@@ -71,7 +74,7 @@ final class CourtBookingCartPageSettings {
           'detailUrl' => \Drupal\Core\Url::fromRoute('court_booking.court_detail', [
             'commerce_product_variation' => $vid,
           ])->setAbsolute()->toString(),
-          'booking' => $sport_settings->bookingRulesForJs($merged, CourtBookingRegional::effectiveTimeZoneId($config_factory, $account)),
+          'booking' => $sport_settings->bookingRulesForJs($merged, CourtBookingRegional::effectiveTimeZoneId($config_factory, $account), $langcode),
         ];
       }
     }
@@ -102,7 +105,7 @@ final class CourtBookingCartPageSettings {
     ksort($dates_by_ymd);
     $dates_bootstrap = array_values($dates_by_ymd);
 
-    $global_js = $sport_settings->bookingRulesForJs($sport_settings->getGlobalBookingRules(), $site_tz);
+    $global_js = $sport_settings->bookingRulesForJs($sport_settings->getGlobalBookingRules(), $site_tz, $langcode);
 
     $cart_slot_lens = array_map(static fn (array $v): int => max(1, (int) ($v['slotMinutes'] ?? 60)), array_values($variations_out));
     $duration_grid_minutes = CourtBookingPlayDurationGrid::lcmMany($cart_slot_lens);
@@ -125,6 +128,8 @@ final class CourtBookingCartPageSettings {
       'slotInterval' => $interval,
       'slotMinutes' => max(1, $slot_minutes),
       'timezone' => $site_tz,
+      'interfaceLangcode' => $langcode,
+      'intlLocale' => CourtBookingRegional::intlLocaleForLangcode($langcode),
       'countryCode' => CourtBookingRegional::defaultCountryCode($config_factory),
       'firstDayOfWeek' => CourtBookingRegional::firstDayOfWeek($config_factory),
       'bookingDayStart' => $global_js['bookingDayStart'],

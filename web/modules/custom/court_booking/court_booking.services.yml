@@ -35,7 +35,9 @@ services:
 
   court_booking.sport_settings:
     class: Drupal\court_booking\CourtBookingSportSettings
-    arguments: ['@config.factory']
+    arguments:
+      - '@config.factory'
+      - '@date.formatter'
 
   court_booking.slot_booking:
     class: Drupal\court_booking\CourtBookingSlotBooking

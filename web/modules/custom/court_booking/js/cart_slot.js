@@ -91,6 +91,51 @@
     }
   }
 
+  /** @type {string|null} */
+  let memoResolvedIntlLocale = null;
+
+  /**
+   * @param {string} raw
+   * @returns {string}
+   */
+  function normalizeIntlLocaleForEngine(raw) {
+    let candidate = raw;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        new Intl.DateTimeFormat(candidate).format(0);
+        return candidate;
+      } catch (e) {
+        if (attempt === 0 && candidate.includes('-u-nu-')) {
+          candidate = candidate.split('-u-')[0];
+          continue;
+        }
+      }
+      break;
+    }
+    return 'en';
+  }
+
+  /**
+   * Locale for user-visible Intl formatting (matches Drupal interface language).
+   *
+   * @returns {string}
+   */
+  function interfaceIntlLocale() {
+    if (memoResolvedIntlLocale !== null) {
+      return memoResolvedIntlLocale;
+    }
+    const s = drupalSettings.courtBookingCart;
+    let raw = 'en';
+    if (s && typeof s === 'object') {
+      const loc = s.intlLocale || s.interfaceLangcode;
+      if (typeof loc === 'string' && loc.trim() !== '') {
+        raw = loc.trim();
+      }
+    }
+    memoResolvedIntlLocale = normalizeIntlLocaleForEngine(raw);
+    return memoResolvedIntlLocale;
+  }
+
   function calendarEntries(cal) {
     if (!cal || typeof cal !== 'object') {
       return [];
@@ -101,11 +146,32 @@
   function formatMonthYearHeading(ymd, tz) {
     const [y, m, d] = ymd.split('-').map((x) => parseInt(x, 10));
     const utcNoon = Date.UTC(y, m - 1, d, 12, 0, 0);
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(interfaceIntlLocale(), {
       timeZone: tz,
       month: 'short',
       year: 'numeric',
     }).format(new Date(utcNoon));
+  }
+
+  /**
+   * @param {string} ymd
+   * @param {string} tz
+   * @returns {{ weekdayShort: string, dayNumeric: string }}
+   */
+  function formatDateStripLabels(ymd, tz) {
+    const [y, m, d] = ymd.split('-').map((x) => parseInt(x, 10));
+    const utcNoon = Date.UTC(y, m - 1, d, 12, 0, 0);
+    const inst = new Date(utcNoon);
+    const loc = interfaceIntlLocale();
+    const weekdayShort = new Intl.DateTimeFormat(loc, {
+      timeZone: tz,
+      weekday: 'short',
+    }).format(inst);
+    const dayNumeric = new Intl.DateTimeFormat(loc, {
+      timeZone: tz,
+      day: 'numeric',
+    }).format(inst);
+    return { weekdayShort, dayNumeric };
   }
 
   function gcdPlayGrid(a, b) {
@@ -213,15 +279,16 @@
 
   function formatSlotRangeLabel(startIso, blockEndIso, timeZone) {
     const opts = { hour: 'numeric', minute: '2-digit', timeZone };
-    const a = new Date(startIso).toLocaleTimeString(undefined, opts);
-    const b = new Date(blockEndIso).toLocaleTimeString(undefined, opts);
+    const loc = interfaceIntlLocale();
+    const a = new Date(startIso).toLocaleTimeString(loc, opts);
+    const b = new Date(blockEndIso).toLocaleTimeString(loc, opts);
     return `${a} – ${b}`;
   }
 
   function setTimeSlotPillContent(btn, startIso, endIso, timeZone) {
     btn.textContent = '';
     const d = new Date(startIso);
-    const parts = new Intl.DateTimeFormat(undefined, {
+    const parts = new Intl.DateTimeFormat(interfaceIntlLocale(), {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
@@ -564,9 +631,10 @@
               : on
                 ? 'min-w-[4.5rem] shrink-0 rounded-xl border-2 border-[#02216E] bg-[#02216E] px-3 py-3 text-center text-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]'
                 : 'min-w-[4.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-800 shadow-sm hover:border-[#02216E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#02216E]';
+            const stripLabels = formatDateStripLabels(day.ymd, siteTimeZoneId);
             btn.innerHTML = `<span class="block text-xs font-medium uppercase ${on ? 'text-white' : 'text-slate-500'}">${Drupal.checkPlain(
-              day.weekday || '',
-            )}</span><span class="mt-1 block font-display text-lg font-semibold">${Drupal.checkPlain(String(day.dayNum || ''))}</span>`;
+              stripLabels.weekdayShort,
+            )}</span><span class="mt-1 block font-display text-lg font-semibold">${Drupal.checkPlain(stripLabels.dayNumeric)}</span>`;
             if (disabled) {
               btn.disabled = true;
               btn.setAttribute('aria-disabled', 'true');
