@@ -11,3 +11,10 @@ misk-hero:
   dependencies:
     - core/drupal
     - core/once
+
+misk-footer:
+  js:
+    js/misk-footer.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

@@ -1,4 +1,9 @@
-<div class="min-h-screen bg-slate-50 text-slate-900">
+{{ attach_library('misk/misk-footer') }}
+
+{# Theme path to footer arrow asset (spaces URL-encoded for src). #}
+{% set misk_footer_arrow_src = base_path ~ directory ~ '/images/Notification Icon.png' %}
+
+<div class="flex min-h-screen flex-col bg-slate-50 text-slate-900">
   {% if page.header %}
     <header role="banner" class="border-b border-slate-200/80 bg-white/90 backdrop-blur-sm">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
@@ -6,13 +11,60 @@
       </div>
     </header>
   {% endif %}
-  <main id="main-content" role="main" class="">
+
+  <main id="main-content" role="main" class="flex-1">
     {{ page.content }}
   </main>
-  {% if page.footer %}
-    <footer role="contentinfo" class="border-t border-slate-200 bg-white">
-      <div class="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-500 md:px-6">
-        {{ page.footer }}
+
+  {% if page.footer_logo or page.footer_menu_1 or page.footer_menu_2 or page.footer_menu_3 or page.footer_menu_4 or page.footer_menu_5 or page.footer_bottom_left or page.footer_bottom_right %}
+    <footer role="contentinfo" class="bg-[#02216e] text-white">
+      <div class="mx-auto max-w-7xl px-[max(1rem,env(safe-area-inset-left))] pb-8 pt-8 pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 sm:pb-10 sm:pt-10 md:pt-12 lg:px-8 lg:pb-12">
+        <div class="flex flex-col gap-8 sm:gap-10 lg:flex-row lg:items-start lg:gap-8 xl:gap-12">
+          {% if page.footer_logo %}
+            <div class="misk-footer__logo mx-auto w-full max-w-[12rem] shrink-0 sm:max-w-xs lg:mx-0 [&_a]:inline-block [&_img]:h-auto [&_img]:max-w-full">
+              {{ page.footer_logo }}
+            </div>
+          {% endif %}
+
+          <div class="relative min-w-0 w-full flex-1">
+            <div class="mb-5 flex justify-center sm:mb-4 sm:justify-end lg:absolute lg:right-0 lg:top-0 lg:z-10 lg:mb-0">
+              <button id="misk-back-to-top" type="button" class="flex h-11 w-11 shrink-0 items-center justify-center" aria-label="{{ 'Back to top'|t }}">
+                <img class="h-6 w-6 object-contain sm:h-7 sm:w-7" src="{{ misk_footer_arrow_src|replace({' ': '%20'}) }}" width="28" height="28" alt="" loading="lazy" decoding="async"/>
+              </button>
+            </div>
+
+            <div class="misk-footer__menus grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 sm:gap-x-6 md:grid-cols-3 md:gap-y-9 lg:grid-cols-5 lg:gap-x-3 lg:gap-y-8 lg:pr-14 xl:gap-x-5 xl:pr-20 [&_a]:break-words [&_a]:text-white [&_a]:no-underline [&_a]:transition-colors hover:[&_a]:underline [&_li]:mb-2 [&_ul]:m-0 [&_ul]:list-none [&_ul]:p-0 [&_h2]:mb-3 [&_h2]:mt-0 [&_h2]:text-balance [&_h2]:text-xs [&_h2]:font-bold [&_h2]:uppercase [&_h2]:leading-snug [&_h2]:tracking-wide [&_h2]:text-[#f17163] sm:[&_h2]:text-sm [&_.block__title]:mb-3 [&_.block__title]:text-balance [&_.block__title]:text-xs [&_.block__title]:font-bold [&_.block__title]:uppercase [&_.block__title]:leading-snug [&_.block__title]:tracking-wide [&_.block__title]:text-[#f17163] sm:[&_.block__title]:text-sm">
+              {% if page.footer_menu_1 %}<div class="min-w-0">{{ page.footer_menu_1 }}</div>{% endif %}
+              {% if page.footer_menu_2 %}<div class="min-w-0">{{ page.footer_menu_2 }}</div>{% endif %}
+              {% if page.footer_menu_3 %}<div class="min-w-0">{{ page.footer_menu_3 }}</div>{% endif %}
+              {% if page.footer_menu_4 %}<div class="min-w-0">{{ page.footer_menu_4 }}</div>{% endif %}
+              {% if page.footer_menu_5 %}<div class="min-w-0">{{ page.footer_menu_5 }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 flex flex-col gap-5 border-t border-white/25 pt-6 text-xs sm:mt-10 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:text-sm md:mt-12 md:items-center">
+          {% if page.footer_bottom_left %}
+            <div class="misk-footer__bottom-left min-w-0 max-w-full text-center text-white/95 sm:flex-1 sm:text-left [&_a]:text-white [&_a]:underline">
+              {{ page.footer_bottom_left }}
+            </div>
+          {% else %}
+            <div class="min-w-0 max-w-full text-center text-white/95 sm:flex-1 sm:text-left">
+              <p class="m-0 leading-relaxed">{{ 'Copyright © 2026 Misk. All rights reserved.'|t }}</p>
+            </div>
+          {% endif %}
+
+          {% if page.footer_bottom_right %}
+            <div class="misk-footer__bottom-right flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-end sm:pl-4 md:shrink-0 [&_a]:inline-flex [&_a]:items-center [&_a]:gap-2 [&_a]:text-white [&_a]:no-underline [&_a]:transition-colors hover:[&_a]:underline">
+              {{ page.footer_bottom_right }}
+            </div>
+          {% else %}
+            <nav class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:justify-end sm:pl-4 md:shrink-0" aria-label="{{ 'Legal links'|t }}">
+              <a href="/privacy-policy" class="text-white no-underline transition-colors hover:underline">{{ 'Privacy Policy'|t }}</a>
+              <a href="/terms-of-service" class="text-white no-underline transition-colors hover:underline">{{ 'Terms'|t }}</a>
+            </nav>
+          {% endif %}
+        </div>
       </div>
     </footer>
   {% endif %}
