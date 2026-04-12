@@ -1,0 +1,17 @@
+<div class="flex justify-between items-center px-6 py-4">
+  {% for row in rows %}
+    <div class="flex flex-col items-center text-center">
+      
+      <img 
+        class="w-12 h-12 mb-2 object-contain"
+        src="{{ file_url(row.content['#row']._entity.field_essential_icon.0.entity.field_media_image.0.entity.uri.value) }}" 
+        alt="{{ row.content['#row']._entity.name.value }}"
+      >
+
+      <div class="text-sm text-blue-900 font-medium">
+        {{ row.content['#row']._entity.name.value }}
+      </div>
+
+    </div>
+  {% endfor %}
+</div>
