@@ -11,6 +11,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\Component\Utility\Html;
 use Drupal\court_booking\CourtBookingRegional;
+use Drupal\court_booking\CourtBookingSlotBlockOverlapValidator;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -21,6 +22,7 @@ final class SlotManagementForm extends FormBase {
   public function __construct(
     protected AvailabilityManagerInterface $availabilityManager,
     protected EntityTypeManagerInterface $entityTypeManager,
+    protected CourtBookingSlotBlockOverlapValidator $slotBlockOverlapValidator,
   ) {}
 
   /**
@@ -30,6 +32,7 @@ final class SlotManagementForm extends FormBase {
     return new static(
       $container->get('commerce_bat.availability_manager'),
       $container->get('entity_type.manager'),
+      $container->get('court_booking.slot_block_overlap_validator'),
     );
   }
 
@@ -204,6 +207,14 @@ final class SlotManagementForm extends FormBase {
           ['@qty' => $quantity, '@cap' => $capacity]
         ));
       }
+      return;
+    }
+
+    if ($this->slotBlockOverlapValidator->hasOverlappingBlockout($variation, $start, $end)) {
+      $form_state->setErrorByName(
+        'time_start',
+        $this->t('This date and time range overlaps an existing block for this court. Remove or edit the existing block in Commerce BAT, or choose a different time range.'),
+      );
     }
   }
 

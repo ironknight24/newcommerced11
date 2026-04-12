@@ -28,10 +28,6 @@
 .ddev/commands/web/
 .ddev/.importdb*
 
-# Ignore database dumps.
-*.sql
-*.sql.gz
-
 # OS and Editor files.
 .DS_Store
 Thumbs.db

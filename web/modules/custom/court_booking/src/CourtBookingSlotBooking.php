@@ -45,6 +45,7 @@ final class CourtBookingSlotBooking {
     string $end_raw,
     int $quantity,
     AccountInterface $account,
+    bool $skip_availability_check = FALSE,
   ): array {
     $fail = function (int $status, string $message) {
       return [
@@ -144,9 +145,11 @@ final class CourtBookingSlotBooking {
       return $fail(400, (string) $this->t('Bookings are closed on this date.'));
     }
 
-    $is_available = $this->availabilityManager->isAvailable($variation, $start, $end, $quantity);
-    if (!$is_available) {
-      return $fail(409, (string) $this->t('That slot is no longer available.'));
+    if (!$skip_availability_check) {
+      $is_available = $this->availabilityManager->isAvailable($variation, $start, $end, $quantity);
+      if (!$is_available) {
+        return $fail(409, (string) $this->t('That slot is no longer available.'));
+      }
     }
 
     $billing_units = (int) ($play_minutes / $slot_len_minutes);
@@ -240,7 +243,7 @@ final class CourtBookingSlotBooking {
         if (!$variation instanceof ProductVariationInterface) {
           continue;
         }
-        $val = $this->validateLessonSlot($variation, $start_raw, $end_raw, $quantity, $account);
+        $val = $this->validateLessonSlot($variation, $start_raw, $end_raw, $quantity, $account, FALSE);
         if (!empty($val['ok'])) {
           $ok_ids[] = $vid;
         }

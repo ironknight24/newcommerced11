@@ -50,8 +50,32 @@ services:
       - '@config.factory'
       - '@court_booking.sport_settings'
 
+  court_booking.slot_block_overlap_validator:
+    class: Drupal\court_booking\CourtBookingSlotBlockOverlapValidator
+    arguments:
+      - '@entity_type.manager'
+      - '@commerce_bat.availability_manager'
+
   court_booking.access.cart_slot_order_item:
     class: Drupal\court_booking\Access\CartSlotOrderItemAccessCheck
     arguments: ['@commerce_cart.cart_provider']
     tags:
       - { name: access_check, applies_to: _court_booking_cart_slot_order_item }
+
+  court_booking.utc_daterange_formatter:
+    class: Drupal\court_booking\CourtBookingUtcDaterangeFormatter
+    arguments: ['@config.factory']
+
+  court_booking.integrated_bookings_query:
+    class: Drupal\court_booking\CourtBookingIntegratedBookingsQuery
+    arguments: ['@database', '@config.factory']
+
+  court_booking.access.integrated_bookings:
+    class: Drupal\court_booking\Access\IntegratedBookingsAccessCheck
+    tags:
+      - { name: access_check, applies_to: _court_booking_integrated_bookings_access }
+
+  court_booking.access.post_checkout_slot:
+    class: Drupal\court_booking\Access\PostCheckoutSlotAccessCheck
+    tags:
+      - { name: access_check, applies_to: _court_booking_post_checkout_slot }

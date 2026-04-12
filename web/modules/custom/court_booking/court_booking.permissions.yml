@@ -7,3 +7,15 @@ administer court booking:
 administer court booking slot blocks:
   title: 'Block court time slots (slot management)'
   description: 'Use the Slot management screen to create Commerce BAT blockouts for mapped courts without full Commerce administration rights.'
+
+view court booking admin bookings:
+  title: 'View integrated court booking admin dashboard'
+  description: 'See placed orders with booking line items, BAT calendar rows, and links in one screen.'
+
+administer court booking post-checkout slot:
+  title: 'Adjust court booking slots after checkout'
+  description: 'Change booked times on placed (non-draft) order lines and resync Commerce BAT events.'
+
+bypass court booking slot availability:
+  title: 'Bypass availability checks when adjusting court booking slots'
+  description: 'Allows using the force option when adjusting slots so staff can override calendar conflicts (use sparingly).'

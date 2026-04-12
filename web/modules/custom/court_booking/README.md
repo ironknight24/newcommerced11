@@ -23,8 +23,29 @@ Grant **access court booking page** and **use court booking add** to roles that 
 ### Slot management (admin)
 
 - **Commerce → Configuration → Court booking: Slot management** (`/admin/commerce/config/court-booking/slot-management`) lets staff block a **date and local time range** on a mapped lesson court without needing **Administer commerce**. Permission: **Block court time slots (slot management)** (`administer court booking slot blocks`). Users with **Administer court booking settings** can use the same screen via the **Slot management** tab next to Court booking settings.
+- Submitting a range that **overlaps an existing admin blockout** for the same court is **rejected in form validation** with a clear message (Commerce BAT may otherwise merge blockouts on save; the UI enforces a single explicit block per window for staff clarity).
 - Blocks are stored as **Commerce BAT blockout events** (same as **Commerce → Commerce BAT → Create blocking event**). **Temporary resource closures** in Court booking settings are separate: they are **full-day** ranges per variation for messaging/validation, not fine-grained BAT calendar blocks.
 - **Manual QA:** Grant the permission to a test user, pick a court/date/times, submit **Block time slot**, then confirm `/book/amenities` (or add-to-cart) no longer offers that window. Use **Configuration → Development → Performance → Clear cache** or `drush cr` if menus do not appear until cache is rebuilt.
+
+### Bookings & overrides (placed orders + BAT + post-checkout slot changes)
+
+- **Commerce → Configuration → Court booking: Bookings & overrides** (`/admin/commerce/config/court-booking/bookings`) lists **placed** Commerce orders (state other than **draft**) that have at least one line item with the Commerce BAT **lesson** date field populated (`commerce_bat.settings` → `lesson_order_item_date_field`, default `field_cbat_rental_date`). Each row shows the booked slot (UTC values shown in the site time zone, consistent with the BAT events list) and **BAT calendar** rows linked by Commerce BAT’s `field_order_item_ref`, with links to edit each `bat_event` and to the order.
+- **Permissions:** **`view court booking admin bookings`** (or **`administer court booking`**) to open the dashboard. **`administer court booking post-checkout slot`** to use **Adjust slot** (form and JSON API) on non-draft orders; **`bypass court booking slot availability`** enables the **force** path when adjusting (skip Commerce BAT availability only—other booking rules still apply unless you edit the BAT event directly).
+- **Adjust booking slot (override):** form at `/admin/commerce/config/court-booking/bookings/slot/{order_item}/edit`, or **POST** JSON to the same path without `/edit` with `X-CSRF-Token` and body `{ "start": "…", "end": "…", "force": false }`. Saving runs `commerce_bat_sync_order_events()` so calendar rows stay aligned with the line item. The form shows **Commerce order ID**, **order number**, and **order line item ID** as the booking identifiers used for support and audits.
+
+#### Advanced Booking Controls — scenario mapping (QA)
+
+| Story idea | Where in Court booking |
+|------------|-------------------------|
+| Block time slot (date + local time range) | **Slot management** (`/admin/commerce/config/court-booking/slot-management`) |
+| Invalid / end-before-start times | Slot management **validateForm** messages |
+| Overlap with an existing **block** for the same court | Slot management rejects with an **overlap** message (BAT blockout query) |
+| Missing date / time / court | Slot management required fields + validation |
+| “Booking override” / change a placed booking | **Bookings & overrides** list → **Adjust slot** on the line item |
+| “Booking ID” in scenarios | Use **Commerce order ID** + **order number** + **order line item ID** on the adjust form and in the list row’s order link |
+| Override parameters | **Start / end (UTC)** on adjust form; optional **force** if role has **bypass court booking slot availability** |
+| Edit calendar event directly | **BAT events** menu → **Edit** on the event, or **Edit BAT** link from the bookings table |
+| Missing mandatory override fields | Adjust form requires start/end; JSON API returns **400** with a message if `start`/`end` missing |
 
 ### BAT events list (bookings / overrides)
 

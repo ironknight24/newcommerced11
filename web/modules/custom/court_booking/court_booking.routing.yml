@@ -65,3 +65,36 @@ court_booking.slot_management:
     _title: 'Slot management'
   requirements:
     _custom_access: '\Drupal\court_booking\Access\SlotManagementAccess::access'
+
+court_booking.integrated_bookings:
+  path: '/admin/commerce/config/court-booking/bookings'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\IntegratedBookingsController::content'
+    _title_callback: '\Drupal\court_booking\Controller\IntegratedBookingsController::title'
+  requirements:
+    _court_booking_integrated_bookings_access: 'TRUE'
+
+court_booking.post_checkout_slot_form:
+  path: '/admin/commerce/config/court-booking/bookings/slot/{commerce_order_item}/edit'
+  defaults:
+    _form: '\Drupal\court_booking\Form\PostCheckoutSlotForm'
+    _title: 'Adjust booking slot (override)'
+  requirements:
+    _court_booking_post_checkout_slot: 'TRUE'
+  options:
+    parameters:
+      commerce_order_item:
+        type: entity:commerce_order_item
+
+court_booking.post_checkout_slot:
+  path: '/admin/commerce/config/court-booking/bookings/slot/{commerce_order_item}'
+  defaults:
+    _controller: '\Drupal\court_booking\Controller\PostCheckoutSlotController::updateSlot'
+  methods: [POST]
+  requirements:
+    _court_booking_post_checkout_slot: 'TRUE'
+    _csrf_request_header_token: 'TRUE'
+  options:
+    parameters:
+      commerce_order_item:
+        type: entity:commerce_order_item

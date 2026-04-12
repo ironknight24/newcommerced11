@@ -30,9 +30,10 @@
 					<p class="max-w-md text-base text-white/85 md:text-lg">{{ court_booking_hero_hint }}</p>
 				{% endif %}
 				{% if node.field_court_location is defined and not node.field_court_location.isEmpty %}
-					<p class="mt-4 flex items-center justify-center gap-2 text-sm text-white/90 md:text-base">
+					<p
+						class="mt-4 flex items-center justify-center gap-2 text-sm text-white/90 md:text-base">
 						{# <span class="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-white/80" aria-hidden="true"></span> #}
-            <img src="/themes/custom/misk/images/pin.png" alt="Location" class="w-4 h-4" />
+						<img src="/themes/custom/misk/images/pin.png" alt="Location" class="w-4 h-4"/>
 						<span>{{ node.field_court_location.value }}</span>
 					</p>
 				{% endif %}
@@ -74,49 +75,50 @@
 					{{ 'Details'|t }}
 				</h2>
 
-				<dl class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-10 text-[#02216E]">
+				<dl
+					class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-10 text-[#02216E]">
 
 					{# {% if node.field_court_capacity is defined and not node.field_court_capacity.isEmpty %} #}
-						<div class="flex items-center gap-3">
-							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
-							<dd class="text-base">
-								{{ 'Capacity'|t }}
-								-
-								{{ node.field_court_capacity.value }}
-								{{ 'players'|t }}
-							</dd>
-						</div>
+					<div class="flex items-center gap-3">
+						<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
+						<dd class="text-base">
+							{{ 'Capacity'|t }}
+							-
+							{{ node.field_court_capacity.value }}
+							{{ 'players'|t }}
+						</dd>
+					</div>
 					{# {% endif %} #}
 
 					{# {% if node.field_court_size is defined and not node.field_court_size.isEmpty %} #}
-						<div class="flex items-center gap-3">
-							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
-							<dd class="text-base">
-								{{ 'Size'|t }}
-								-
-								{{ node.field_court_size.value }}
-							</dd>
-						</div>
+					<div class="flex items-center gap-3">
+						<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
+						<dd class="text-base">
+							{{ 'Size'|t }}
+							-
+							{{ node.field_court_size.value }}
+						</dd>
+					</div>
 					{# {% endif %} #}
 
 					{# {% if node.field_court_status is defined and not node.field_court_status.isEmpty %} #}
-						<div class="flex items-center gap-3">
-							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
-							<dd class="text-base">
-								{{ node.field_court_details.value|raw }}
-							</dd>
-						</div>
+					<div class="flex items-center gap-3">
+						<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
+						<dd class="text-base">
+							{{ node.field_court_details.value|raw }}
+						</dd>
+					</div>
 					{# {% endif %} #}
 
 					{# {% if node.field_court_floor is defined and not node.field_court_floor.isEmpty %} #}
-						<div class="flex items-center gap-3">
-							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
-							<dd class="text-base">
-								{{ node.field_court_status.value }}
-								|
-								{{ node.field_court_floor.value }}
-							</dd>
-						</div>
+					<div class="flex items-center gap-3">
+						<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
+						<dd class="text-base">
+							{{ node.field_court_status.value }}
+							|
+							{{ node.field_court_floor.value }}
+						</dd>
+					</div>
 					{# {% endif %} #}
 
 				</dl>
@@ -129,4 +131,4 @@
 	</div>
 
 	{#{{ content|without('field_court_description') }}#}
-</div></article>
+</article>

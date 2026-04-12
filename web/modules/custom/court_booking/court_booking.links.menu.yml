@@ -5,16 +5,23 @@ court_booking.settings:
   route_name: court_booking.settings
   weight: 35
 
+court_booking.integrated_bookings:
+  title: 'Court booking: Bookings & overrides'
+  description: 'Placed orders, BAT calendar, and post-checkout slot overrides in one place.'
+  parent: commerce.configuration
+  route_name: court_booking.integrated_bookings
+  weight: 36
+
 court_booking.slot_management:
   title: 'Court booking: Slot management'
   description: 'Block court time ranges (Commerce BAT blockouts).'
   parent: commerce.configuration
   route_name: court_booking.slot_management
-  weight: 36
+  weight: 37
 
 court_booking.bat_events:
   title: 'Court booking: BAT events'
   description: 'List bookings and blockouts (BAT events) with court column.'
   parent: commerce.configuration
   route_name: entity.bat_event.collection
-  weight: 37
+  weight: 38
