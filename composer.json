@@ -28,6 +28,7 @@
         "drupal/core-recommended": "^11.2",
         "drupal/gin": "^5.0",
         "drupal/paragraphs": "^1.20",
+        "drupal/twig_tweak": "^3.4",
         "drush/drush": "^13.7",
         "endroid/qr-code": "^6.0",
         "razorpay/razorpay": "^2.9"

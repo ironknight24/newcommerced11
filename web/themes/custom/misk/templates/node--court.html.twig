@@ -76,7 +76,7 @@
 
 				<dl class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-10 text-[#02216E]">
 
-					{% if node.field_court_capacity is defined and not node.field_court_capacity.isEmpty %}
+					{# {% if node.field_court_capacity is defined and not node.field_court_capacity.isEmpty %} #}
 						<div class="flex items-center gap-3">
 							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
 							<dd class="text-base">
@@ -86,9 +86,9 @@
 								{{ 'players'|t }}
 							</dd>
 						</div>
-					{% endif %}
+					{# {% endif %} #}
 
-					{% if node.field_court_size is defined and not node.field_court_size.isEmpty %}
+					{# {% if node.field_court_size is defined and not node.field_court_size.isEmpty %} #}
 						<div class="flex items-center gap-3">
 							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
 							<dd class="text-base">
@@ -97,27 +97,27 @@
 								{{ node.field_court_size.value }}
 							</dd>
 						</div>
-					{% endif %}
+					{# {% endif %} #}
 
-					{% if node.field_court_status is defined and not node.field_court_status.isEmpty %}
+					{# {% if node.field_court_status is defined and not node.field_court_status.isEmpty %} #}
+						<div class="flex items-center gap-3">
+							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
+							<dd class="text-base">
+								{{ node.field_court_details.value|raw }}
+							</dd>
+						</div>
+					{# {% endif %} #}
+
+					{# {% if node.field_court_floor is defined and not node.field_court_floor.isEmpty %} #}
 						<div class="flex items-center gap-3">
 							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
 							<dd class="text-base">
 								{{ node.field_court_status.value }}
-							</dd>
-						</div>
-					{% endif %}
-
-					{% if node.field_court_floor is defined and not node.field_court_floor.isEmpty %}
-						<div class="flex items-center gap-3">
-							<span class="w-2 h-2 bg-[#02216E] rounded-full"></span>
-							<dd class="text-base">
-								{{ 'Outdoor'|t }}
 								|
 								{{ node.field_court_floor.value }}
 							</dd>
 						</div>
-					{% endif %}
+					{# {% endif %} #}
 
 				</dl>
 			</section>
