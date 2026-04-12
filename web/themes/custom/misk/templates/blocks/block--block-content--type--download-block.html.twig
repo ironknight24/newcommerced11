@@ -1,0 +1,61 @@
+{#
+  Block content type: download_block.
+  Fields: field_download_phone_image, field_download_playstore_image, field_download_qr_image,
+          field_download_text, field_download_title
+#}
+{% set download_heading_id = elements['#block_content'] is defined ? 'misk-download-heading--' ~ elements['#block_content'].id() : 'misk-download-heading' %}
+
+<section class="misk-download-block bg-[#f4f8fc] pb-0"{% if content.field_download_title|render|trim is not empty %} aria-labelledby="{{ download_heading_id }}"{% endif %}>
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 md:py-16 lg:px-8 lg:py-20">
+    <div class="flex flex-col items-stretch gap-12 lg:flex-row lg:items-center lg:gap-14 xl:gap-20">
+      {# Left: phone mockup on coral circle + soft shadow #}
+      <div class="relative flex w-full justify-center lg:w-[46%] lg:max-w-xl lg:shrink-0">
+        <div class="absolute left-1/2 top-1/2 -z-0 aspect-square w-[min(88vw,19rem)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF6B63] sm:w-[20rem] md:w-[22rem] lg:w-[24rem]" aria-hidden="true"></div>
+        <div class="relative z-10 flex w-full justify-center px-2 pt-2 [&_img]:mx-auto [&_img]:h-auto [&_img]:max-h-[min(72vh,32rem)] [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain [&_img]:drop-shadow-xl">
+          {{ content.field_download_phone_image|without('label') }}
+        </div>
+      </div>
+
+      {# Right: title, copy, QR + store badge #}
+      <div class="min-w-0 flex-1">
+        {% if content.field_download_title|render|trim is not empty %}
+          <div class="border-b border-[#02216E]/15 pb-4 md:pb-5">
+            <h2 id="{{ download_heading_id }}" class="font-display text-balance text-2xl font-bold leading-tight tracking-tight text-[#02216E] sm:text-3xl md:text-4xl">
+              {{ content.field_download_title|without('label') }}
+            </h2>
+          </div>
+        {% endif %}
+
+        {% if content.field_download_text|render|trim is not empty %}
+          <div class="mt-6 max-w-2xl border-l-4 border-[#02216E]/25 pl-5 text-base leading-relaxed text-[#02216E]/90 md:mt-8 md:text-lg [&_a]:font-medium [&_a]:text-[#02216E] [&_a]:underline [&_p]:mb-4 [&_p]:last:mb-0">
+            {{ content.field_download_text|without('label') }}
+          </div>
+        {% endif %}
+
+        {# Decorative horizontal rules framing the download row #}
+        <div class="my-8 md:my-10">
+          <div class="h-px w-full bg-gradient-to-r from-transparent via-[#02216E]/20 to-transparent" aria-hidden="true"></div>
+        </div>
+
+        <div class="flex flex-col items-start gap-8 sm:flex-row sm:items-end sm:gap-10 lg:gap-12">
+          {% if content.field_download_qr_image|render|trim is not empty %}
+            <div class="misk-download-block__qr shrink-0 rounded-sm border border-[#02216E]/10 bg-white p-2 shadow-sm [&_img]:block [&_img]:h-auto [&_img]:max-h-36 [&_img]:w-auto [&_img]:max-w-[9.5rem] sm:[&_img]:max-h-40">
+              {{ content.field_download_qr_image|without('label') }}
+            </div>
+          {% endif %}
+
+          {% if content.field_download_playstore_image|render|trim is not empty %}
+            <div class="flex min-w-0 flex-col gap-3 sm:gap-4 [&_a]:inline-block [&_a]:max-w-[12.5rem] [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:object-contain">
+              {{ content.field_download_playstore_image|without('label') }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Full-width bottom accent bar (matches site footer navy) #}
+  <div class="h-3 w-full bg-[#02216E] sm:h-4" role="presentation" aria-hidden="true"></div>
+</section>
+
+{{ content|without('field_download_phone_image', 'field_download_playstore_image', 'field_download_qr_image', 'field_download_text', 'field_download_title') }}

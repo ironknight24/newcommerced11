@@ -1,0 +1,60 @@
+{% set vision_heading_id = elements['#block_content'] is defined ? 'misk-vision-heading--' ~ elements['#block_content'].id() : 'misk-vision-heading' %}
+
+<section class="misk-vision-block bg-[#F5F6F8] py-16 lg:py-20"
+  {% if content.field_vision_title %} aria-labelledby="{{ vision_heading_id }}"{% endif %}
+>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+    {# Parent must be relative for layering #}
+    <div class="relative flex flex-col lg:flex-row items-center">
+
+      {# LEFT CARD (GREY - BACK) #}
+      <div class="w-full lg:w-[30%] bg-[#E6EBF1] px-10 pt-10 pb-16 z-10 position-relative">
+
+        {% if content.field_quotes_image|render|trim is not empty %}
+          <div class="mb-6">
+            {{ content.field_quotes_image }}
+          </div>
+        {% endif %}
+
+        <div class="flex flex-col items-center text-center gap-6">
+
+          {% if content.field_vision_image|render|trim is not empty %}
+            <div class="[&_img]:max-h-20 [&_img]:w-auto">
+              {{ content.field_vision_image }}
+            </div>
+          {% endif %}
+
+          {% if content.field_vision_title|render|trim is not empty %}
+            <div id="{{ vision_heading_id }}"
+                 class="text-[#123E9A] font-bold uppercase text-xl sm:text-2xl leading-tight">
+              {{ content.field_vision_title|without('label') }}
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+
+
+      {# RIGHT CARD (BLUE - FRONT WITH SLIGHT OVERLAP) #}
+      <div class="w-full lg:w-[70%] bg-[#02216E] text-white px-12 py-14 rounded-xl
+                  relative z-20 lg:-ml-[5%]">
+
+        <div class="w-full text-center text-lg leading-relaxed text-white/90">
+
+          {% if content.field_vision_text %}
+            <div class="[&_p]:mb-4 [&_p]:last:mb-0">
+              {{ content.field_vision_text|without('label') }}
+            </div>
+          {% endif %}
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+{{ content|without('field_quotes_image', 'field_vision_image', 'field_vision_title', 'field_vision_text') }}
