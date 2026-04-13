@@ -352,7 +352,15 @@
    * @param {number} playMinutes
    * @returns {boolean}
    */
-  function matchesStaggeredStart(startIso, timeZone, openM, hasWindow, bufferMinutes, playMinutes) {
+  function matchesStaggeredStart(
+    startIso,
+    timeZone,
+    openM,
+    hasWindow,
+    bufferMinutes,
+    playMinutes,
+    baseStepMinutes,
+  ) {
     const startM = minutesSinceMidnightInZone(startIso, timeZone);
     const playMin = Math.max(1, Number(playMinutes) || 60);
     if (bufferMinutes > 0) {
@@ -366,10 +374,11 @@
       return (startM - openM) % step === 0;
     }
     const anchor = hasWindow && openM !== null ? openM : 0;
+    const baseStep = Math.max(1, Number(baseStepMinutes) || 60);
     if (hasWindow && openM !== null && startM < openM) {
       return false;
     }
-    return (startM - anchor) % playMin === 0;
+    return (startM - anchor) % baseStep === 0;
   }
 
   /**
@@ -998,7 +1007,8 @@
             if (!requiredN) {
               continue;
             }
-            if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes)) {
+            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
+            if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes, slotLen)) {
               continue;
             }
             const starts = consecutiveBlockStarts(calendars[v.id], startIso, requiredN);
@@ -1314,7 +1324,8 @@
               if (!requiredN) {
                 continue;
               }
-              if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes)) {
+              const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
+              if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, playMinutes, slotLen)) {
                 continue;
               }
               const availabilityBlock = consecutiveBlock(calendars[v.id], startIso, requiredN);
@@ -1658,7 +1669,18 @@
             if (!requiredN) {
               return;
             }
-            if (!matchesStaggeredStart(startIso, siteTimeZoneId, openM, hasWindow, bufferMinutes, playMinutes)) {
+            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
+            if (
+              !matchesStaggeredStart(
+                startIso,
+                siteTimeZoneId,
+                openM,
+                hasWindow,
+                bufferMinutes,
+                playMinutes,
+                slotLen,
+              )
+            ) {
               return;
             }
             const availabilityBlock = consecutiveBlock(calendars[v.id], startIso, requiredN);

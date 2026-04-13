@@ -236,7 +236,15 @@
     return Math.ceil((playMin + bufferMinutes) / slotLen);
   }
 
-  function matchesStaggeredStart(startIso, timeZone, openM, hasWindow, bufferMinutes, playMinutes) {
+  function matchesStaggeredStart(
+    startIso,
+    timeZone,
+    openM,
+    hasWindow,
+    bufferMinutes,
+    playMinutes,
+    baseStepMinutes,
+  ) {
     const startM = minutesSinceMidnightInZone(startIso, timeZone);
     const playMin = Math.max(1, Number(playMinutes) || 60);
     if (bufferMinutes > 0) {
@@ -250,10 +258,11 @@
       return (startM - openM) % step === 0;
     }
     const anchor = hasWindow && openM !== null ? openM : 0;
+    const baseStep = Math.max(1, Number(baseStepMinutes) || 60);
     if (hasWindow && openM !== null && startM < openM) {
       return false;
     }
-    return (startM - anchor) % playMin === 0;
+    return (startM - anchor) % baseStep === 0;
   }
 
   function playBufferEndIso(startIso, playMinutes, bufferMinutes) {
@@ -561,10 +570,11 @@
         function populateDurationSelect() {
           const el = modalRoot.querySelector('[data-cb-cart-duration]');
           el.innerHTML = '';
-          for (let h = 1; h <= maxBookingHours; h++) {
+          const capMinutes = Math.max(1, Math.min(24, maxBookingHours)) * 60;
+          for (let m = durationGridMinutesCart; m <= capMinutes; m += durationGridMinutesCart) {
             const opt = document.createElement('option');
-            opt.value = String(h);
-            opt.textContent = h === 1 ? Drupal.t('1 Hour') : Drupal.t('@n Hours', { '@n': String(h) });
+            opt.value = String(m);
+            opt.textContent = formatPlayDurationLabel(m);
             el.appendChild(opt);
           }
         }
@@ -918,7 +928,18 @@
             if (!requiredN) {
               return false;
             }
-            if (!matchesStaggeredStart(startIso, tz, openM, hasWindow, bufferMinutes, ctx.playMinutes)) {
+            const slotLen = Math.max(1, Number(v.slotMinutes) || slotMinutesDefault);
+            if (
+              !matchesStaggeredStart(
+                startIso,
+                tz,
+                openM,
+                hasWindow,
+                bufferMinutes,
+                ctx.playMinutes,
+                slotLen,
+              )
+            ) {
               return false;
             }
             const availabilityBlock = consecutiveBlock(cal, startIso, requiredN);
