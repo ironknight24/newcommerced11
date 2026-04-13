@@ -2,11 +2,14 @@
 
 namespace Drupal\court_booking\Form;
 
+use Drupal\commerce_bat\Util\DateTimeHelper;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_order\OrderRefreshInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
+use Drupal\court_booking\CourtBookingRegional;
 use Drupal\court_booking\CourtBookingSlotBooking;
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
@@ -77,38 +80,47 @@ final class PostCheckoutSlotForm extends FormBase {
     ];
 
     $date_field = $this->config('commerce_bat.settings')->get('lesson_order_item_date_field') ?: 'field_cbat_rental_date';
-    $start = '';
-    $end = '';
+    $start_utc_raw = '';
+    $end_utc_raw = '';
     if ($commerce_order_item->hasField($date_field) && !$commerce_order_item->get($date_field)->isEmpty()) {
       $vals = $commerce_order_item->get($date_field)->first()->getValue();
-      $start = (string) ($vals['value'] ?? '');
-      $end = (string) ($vals['end_value'] ?? '');
+      $start_utc_raw = (string) ($vals['value'] ?? '');
+      $end_utc_raw = (string) ($vals['end_value'] ?? '');
     }
 
     $variation = $commerce_order_item->getPurchasedEntity();
     $title = $variation instanceof ProductVariationInterface ? $variation->label() : $commerce_order_item->label();
 
+    $site_tz = CourtBookingRegional::effectiveTimeZoneId($this->configFactory(), $this->currentUser());
+    $start_default = $this->utcStorageToDrupalDateTime($start_utc_raw, $site_tz);
+    $end_default = $this->utcStorageToDrupalDateTime($end_utc_raw, $site_tz);
+
     $form['help'] = [
       '#type' => 'markup',
-      '#markup' => '<p>' . $this->t('Court / line: @label. Enter new start and end as UTC ISO 8601 strings (same format as the booking API). Staff with the bypass permission may skip availability when conflicts require a business override.', [
+      '#markup' => '<p>' . $this->t('Court / line: @label. Enter the new start and end using the date and time fields below (shown in @timezone). Staff with the bypass permission may skip availability when conflicts require a business override.', [
         '@label' => $title,
+        '@timezone' => $site_tz,
       ]) . '</p>',
     ];
 
-    $form['start'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Start (UTC)'),
-      '#required' => TRUE,
-      '#default_value' => $start,
-      '#size' => 80,
+    $datetime_common = [
+      '#type' => 'datetime',
+      '#date_timezone' => $site_tz,
+      '#date_date_element' => 'date',
+      '#date_time_element' => 'time',
+      '#date_year_range' => '-2:+5',
     ];
 
-    $form['end'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('End (UTC)'),
+    $form['start'] = $datetime_common + [
+      '#title' => $this->t('Start'),
       '#required' => TRUE,
-      '#default_value' => $end,
-      '#size' => 80,
+      '#default_value' => $start_default,
+    ];
+
+    $form['end'] = $datetime_common + [
+      '#title' => $this->t('End'),
+      '#required' => TRUE,
+      '#default_value' => $end_default,
     ];
 
     if ($this->currentUser()->hasPermission('bypass court booking slot availability')) {
@@ -135,6 +147,40 @@ final class PostCheckoutSlotForm extends FormBase {
   }
 
   /**
+   * Parses Commerce BAT UTC storage into a datetime for the form (site timezone).
+   */
+  protected function utcStorageToDrupalDateTime(string $raw, string $site_timezone_id): ?DrupalDateTime {
+    $raw = trim($raw);
+    if ($raw === '') {
+      return NULL;
+    }
+    $normalized = str_replace('T', ' ', rtrim($raw, 'Z'));
+    try {
+      $utc = new \DateTimeImmutable($normalized, new \DateTimeZone('UTC'));
+    }
+    catch (\Exception $e) {
+      return NULL;
+    }
+    $dd = new DrupalDateTime('@' . $utc->getTimestamp());
+    try {
+      $dd->setTimezone(new \DateTimeZone($site_timezone_id));
+    }
+    catch (\Exception $e) {
+      $dd->setTimezone(new \DateTimeZone('UTC'));
+    }
+    return $dd;
+  }
+
+  /**
+   * Converts a datetime picked in the site timezone to UTC strings for slot validation.
+   */
+  protected function drupalDateTimeToUtcStorageString(DrupalDateTime $date): string {
+    $ts = $date->getTimestamp();
+    $utc = (new \DateTimeImmutable('@' . $ts))->setTimezone(new \DateTimeZone('UTC'));
+    return DateTimeHelper::formatUtc(DateTimeHelper::normalizeUtc($utc));
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
@@ -154,10 +200,24 @@ final class PostCheckoutSlotForm extends FormBase {
     $quantity = max(1, (int) $item->getQuantity());
     $skip = !empty($form_state->getValue('force')) && $this->currentUser()->hasPermission('bypass court booking slot availability');
 
+    $start_val = $form_state->getValue('start');
+    $end_val = $form_state->getValue('end');
+    if (!$start_val instanceof DrupalDateTime || $start_val->hasErrors()) {
+      $form_state->setErrorByName('start', $this->t('Enter a valid start date and time.'));
+      return;
+    }
+    if (!$end_val instanceof DrupalDateTime || $end_val->hasErrors()) {
+      $form_state->setErrorByName('end', $this->t('Enter a valid end date and time.'));
+      return;
+    }
+
+    $start_raw = $this->drupalDateTimeToUtcStorageString($start_val);
+    $end_raw = $this->drupalDateTimeToUtcStorageString($end_val);
+
     $validation = $this->slotBooking->validateLessonSlot(
       $purchased,
-      (string) $form_state->getValue('start'),
-      (string) $form_state->getValue('end'),
+      $start_raw,
+      $end_raw,
       $quantity,
       $this->currentUser(),
       $skip,

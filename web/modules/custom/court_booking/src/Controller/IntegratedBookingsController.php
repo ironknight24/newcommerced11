@@ -10,12 +10,20 @@ use Drupal\Core\Link;
 use Drupal\Core\Pager\PagerManagerInterface;
 use Drupal\court_booking\CourtBookingIntegratedBookingsQuery;
 use Drupal\court_booking\CourtBookingUtcDaterangeFormatter;
+use Drupal\court_booking\Form\IntegratedBookingsFilterForm;
+use Drupal\court_booking\IntegratedBookingsFilters;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Admin dashboard: orders with court booking line items + BAT event links.
  */
 final class IntegratedBookingsController extends ControllerBase {
+
+  /**
+   * Pager size: distinct orders per page (table may show multiple line item rows).
+   */
+  private const ORDERS_PER_PAGE = 10;
 
   public function __construct(
     protected CourtBookingIntegratedBookingsQuery $bookingsQuery,
@@ -39,14 +47,16 @@ final class IntegratedBookingsController extends ControllerBase {
   /**
    * Builds the integrated bookings table.
    */
-  public function content(): array {
-    $limit = 50;
-    $total = $this->bookingsQuery->countOrders();
+  public function content(Request $request): array {
+    $filters = IntegratedBookingsFilters::fromRequest($request);
+
+    $limit = self::ORDERS_PER_PAGE;
+    $total = $this->bookingsQuery->countOrders($filters);
     $this->pagerManager->createPager($total, $limit);
     $page = $this->pagerManager->findPage();
     $offset = $limit * (int) $page;
 
-    $order_ids = $this->bookingsQuery->getOrderIds($limit, $offset);
+    $order_ids = $this->bookingsQuery->getOrderIds($limit, $offset, $filters);
     $order_storage = $this->entityTypeManager()->getStorage('commerce_order');
     /** @var \Drupal\commerce_order\Entity\OrderInterface[] $orders */
     $orders = $order_storage->loadMultiple($order_ids);
@@ -79,28 +89,37 @@ final class IntegratedBookingsController extends ControllerBase {
     }
 
     $build = [
-      '#type' => 'table',
-      '#header' => [
-        $this->t('Order'),
-        $this->t('State'),
-        $this->t('Placed'),
-        $this->t('Customer'),
-        $this->t('Line item'),
-        $this->t('Booked slot'),
-        $this->t('BAT calendar'),
-        $this->t('Operations'),
+      'description' => [
+        '#type' => 'html_tag',
+        '#tag' => 'p',
+        '#value' => $this->t('Filter by order, state, dates, customer, line item, or booked slot. Pagination is by order (up to @n orders per page); each order may appear on several rows when it has multiple booking line items.', [
+          '@n' => self::ORDERS_PER_PAGE,
+        ]),
+        '#attributes' => ['class' => ['description']],
       ],
-      '#rows' => $rows,
-      '#empty' => $this->t('No placed orders with court booking line items were found.'),
-    ];
-
-    $build['pager'] = [
-      '#type' => 'pager',
-    ];
-
-    $build['#cache'] = [
-      'tags' => ['commerce_order_list'],
-      'contexts' => ['user.permissions', 'url.query_args.pagers:0'],
+      'filter_form' => $this->formBuilder()->getForm(IntegratedBookingsFilterForm::class),
+      'table' => [
+        '#type' => 'table',
+        '#header' => [
+          $this->t('Order'),
+          $this->t('State'),
+          $this->t('Placed'),
+          $this->t('Customer'),
+          $this->t('Line item'),
+          $this->t('Booked slot'),
+          $this->t('BAT calendar'),
+          $this->t('Operations'),
+        ],
+        '#rows' => $rows,
+        '#empty' => $this->t('No placed orders with court booking line items were found.'),
+      ],
+      'pager' => [
+        '#type' => 'pager',
+      ],
+      '#cache' => [
+        'tags' => ['commerce_order_list'],
+        'contexts' => ['user.permissions', 'url.query_args'],
+      ],
     ];
 
     return $build;
