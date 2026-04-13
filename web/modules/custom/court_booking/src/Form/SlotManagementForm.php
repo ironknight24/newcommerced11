@@ -78,7 +78,7 @@ final class SlotManagementForm extends FormBase {
       '#title' => $this->t('Start time'),
       '#size' => 8,
       '#required' => TRUE,
-      '#default_value' => '09:00',
+      '#default_value' => '06:00',
       '#description' => $this->t('24-hour local time, format @format.', ['@format' => 'HH:MM']),
     ];
 
@@ -87,17 +87,14 @@ final class SlotManagementForm extends FormBase {
       '#title' => $this->t('End time'),
       '#size' => 8,
       '#required' => TRUE,
-      '#default_value' => '10:00',
+      '#default_value' => '23:00',
       '#description' => $this->t('Must be after start time on the same calendar day.'),
     ];
 
+    // Keep blockout quantity fixed at 1 while hiding it from the UI.
     $form['quantity'] = [
-      '#type' => 'number',
-      '#title' => $this->t('Quantity'),
-      '#description' => $this->t('For lesson courts, quantity maps to booking units; seats-per-qty rules apply as in Commerce BAT blockouts.'),
-      '#min' => 1,
-      '#default_value' => 1,
-      '#required' => TRUE,
+      '#type' => 'value',
+      '#value' => 1,
     ];
 
     if ($options === []) {
@@ -105,7 +102,6 @@ final class SlotManagementForm extends FormBase {
       $form['block_date']['#access'] = FALSE;
       $form['time_start']['#access'] = FALSE;
       $form['time_end']['#access'] = FALSE;
-      $form['quantity']['#access'] = FALSE;
       $form['empty'] = [
         '#type' => 'markup',
         '#markup' => '<p><em>' . $this->t('No eligible courts are configured. Add sport mappings and ensure each court has a published court node.') . '</em></p>',
@@ -196,13 +192,13 @@ final class SlotManagementForm extends FormBase {
     }
     if ($capacity > 0 && $seat_quantity > $capacity) {
       if ($mode === 'lesson') {
-        $form_state->setErrorByName('quantity', $this->t(
+        $form_state->setErrorByName('variation_id', $this->t(
           'Requested seats (@seats) exceed capacity (@cap). Reduce the quantity.',
           ['@seats' => $seat_quantity, '@cap' => $capacity]
         ));
       }
       else {
-        $form_state->setErrorByName('quantity', $this->t(
+        $form_state->setErrorByName('variation_id', $this->t(
           'Quantity (@qty) exceeds capacity (@cap). Reduce the quantity.',
           ['@qty' => $quantity, '@cap' => $capacity]
         ));
